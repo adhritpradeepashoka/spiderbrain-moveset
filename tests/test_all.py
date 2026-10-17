@@ -81,3 +81,18 @@ def test_bridge_forward_is_negative_ly(cfg):
 def test_template_shapes():
     t = jump_template()
     assert len(t["t"]) == len(t["LR"]) and t["LR"].max() > 0.9
+
+
+def test_ridge_readout_decodes_turn(cfg):
+    from spiderbrain.sim.readout import fit_ridge_readout
+    c = generate(cfg, 0)
+    _, r2 = fit_ridge_readout(c, cfg, episodes=40, verbose=False)
+    assert r2[0] > 0.3          # bearing decodable from frozen random net (seed-dependent: report the ensemble)
+
+
+def test_mock_arena_orients_and_pounces(cfg):
+    import importlib.util, pathlib
+    spec = importlib.util.spec_from_file_location("mock_arena", pathlib.Path(__file__).parents[1] / "scripts" / "mock_arena.py")
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    _, pounce = m.run(seed=0, verbose=False)
+    assert pounce is not None and 0.05 <= pounce[1] <= 0.40
