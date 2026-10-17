@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spiderbrain"
+version = "0.1.0"
+description = "A seeded ensemble of SYNTHETIC jumping-spider (Salticidae) brain connectome priors, plus a bridge that lets one steer the KingKong Jumper crab robot's movement sets."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.0",
+  "pyarrow>=14",
+  "pyyaml>=6",
+  "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+# torch ships preinstalled on Colab. Needed only for the GPU rate model.
+gpu = ["torch>=2.2"]
+viz = ["plotly>=5"]
+omics = ["scanpy>=1.10", "anndata>=0.10"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+spiderbrain = "spiderbrain.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+spiderbrain = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

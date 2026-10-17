@@ -1,0 +1,62 @@
+# transmitters.yaml -- neurotransmitter identity per region, and what sign it gives.
+#
+# >>> TIER C PLACEHOLDERS until transcriptomics/ is run on GEO GSE241696. <<<
+# The only spider brain single-cell atlas (Hylyphantes graminicola, a WEB-BUILDER
+# with reduced vision; Nature Ecol Evol 2023) says nothing directly about
+# salticid visual neuropils. Fractions below are guesses to be replaced by
+# bootstrap estimates from that dataset (see transcriptomics/README.md).
+#
+# Each neuron draws its transmitter from its region's fractions. For the ensemble the
+# fractions are themselves perturbed with a Dirichlet (concentration below), so a
+# connectome carries realistic uncertainty about the E/I balance.
+schema: spiderbrain-transmitters/1
+
+dirichlet_concentration: 60
+
+# sign each transmitter gives its OUTGOING synapses (Dale's law).
+#  histamine: photoreceptor transmitter, sign-inverting in flies (Cl- channel).
+#  glutamate: excitatory OR inhibitory in arthropods (GluCl); sampled per neuron.
+#  monoamines are modulatory: sign +1, scaled by the simulator's modulatory_gain.
+transmitters:
+  ach:        {sign: +1, modulatory: false}
+  gaba:       {sign: -1, modulatory: false}
+  glutamate:  {sign: sampled, p_excitatory: 0.5, modulatory: false}
+  histamine:  {sign: -1, modulatory: false}
+  octopamine: {sign: +1, modulatory: true}
+  serotonin:  {sign: +1, modulatory: true}
+  dopamine:   {sign: +1, modulatory: true}
+
+# fraction of neurons that also release a neuropeptide. Hylyphantes shows EXPANDED
+# peptidergic types relative to Drosophila, so this is not set low. Not simulated yet.
+peptidergic_cotransmission: {default: 0.20, range: [0.10, 0.30]}
+
+default:
+  ach: 0.56
+  gaba: 0.22
+  glutamate: 0.17
+  octopamine: 0.02
+  serotonin: 0.02
+  dopamine: 0.01
+
+by_region:
+  ame_pr:  {histamine: 1.0}
+  ale_pr:  {histamine: 1.0}
+  ple_pr:  {histamine: 1.0}
+  pme_pr:  {histamine: 1.0}
+  leg_prop: {ach: 0.9, gaba: 0.1}
+  # fly Kenyon cells are cholinergic (homology; contested in spiders)
+  mb_globuli: {ach: 0.85, gaba: 0.10, glutamate: 0.05}
+  # fly mushroom-body output neurons mix ACh, GABA and glutamate
+  mb_out: {ach: 0.50, gaba: 0.25, glutamate: 0.25}
+  ab:     {ach: 0.50, gaba: 0.30, glutamate: 0.20}
+  dn:     {ach: 0.50, glutamate: 0.30, gaba: 0.20}
+  neuromod: {octopamine: 0.36, serotonin: 0.36, dopamine: 0.27, histamine: 0.01}
+  # neuromuscular junctions are excitatory; these populations have no outgoing
+  # brain synapses anyway, so this only labels them.
+  leg_mn: {glutamate: 1.0}
+  eye_muscle_mn: {glutamate: 1.0}
+
+# regions whose sign is forced regardless of the sampled glutamate sign
+sign_override:
+  leg_mn: +1
+  eye_muscle_mn: +1

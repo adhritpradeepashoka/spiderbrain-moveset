@@ -1,0 +1,48 @@
+# movesets.yaml -- how the spider brain steers Jumper's built-in "movement sets" (modes).
+#
+# Mode names and bindings are copied from KingKongRobotics/jumper deploy/manifests.json
+# (bundle "jumper", read 2026-10-17). THEY CHANGE: Jumper's own docs say the tutorial's
+# older bindings are out of date. Re-check against deploy/manifests.json and
+# docs/CONTROLS.md before trusting this file; a stale binding is a robot that does nothing.
+schema: spiderbrain-movesets/1
+
+jumper_commit_note: "read from the default branch on 2026-10-17; not pinned to a commit"
+
+# A mode is entered by a latch: tap its control and it toggles on. Dances/gestures/jump end by themselves
+# when their recording finishes ("a recording that ends releases its mode").
+jumper_modes:
+  locomotion:        {task: jumper.posture, reached_by: always}
+  jump:              {task: jumper.jump, pad: {button: A, on: toggle}, key: key_space}
+  claw_left:         {task: jumper.five_foot, pad: {button: LB, on: toggle}, key: key_v}
+  claw_right:        {task: jumper.five_foot, pad: {button: RB, on: toggle}, key: key_b}
+  gesture_hello:     {pad: {button: dpad_up,    on: toggle}, key: key_1}
+  gesture_bow:       {pad: {button: dpad_down,  on: toggle}, key: key_2}
+  gesture_paw:       {pad: {button: dpad_left,  on: toggle}, key: key_3}
+  gesture_salute:    {pad: {button: dpad_right, on: toggle}, key: key_4}
+  dance_crab:        {pad: {button: dpad_up,    with: menu, on: toggle}, key: ctrl+key_1}
+  dance_brazilian:   {pad: {button: dpad_down,  with: menu, on: toggle}, key: ctrl+key_2}
+  dance_maze:        {pad: {button: dpad_left,  with: menu, on: toggle}, key: ctrl+key_3}
+  dance_dream_wings: {pad: {button: dpad_right, with: menu, on: toggle}, key: ctrl+key_4}
+
+# Pad axes while in `locomotion` (jumper.posture/controls.yaml). ly and ry keep the kernel's
+# sign: POSITIVE IS DOWN. Forward is therefore ly < 0.
+pad_axes:
+  forward:   {axis: ly, sign: -1}
+  strafe_left: {axis: lx, sign: -1}
+  turn_ccw:  {axis: rx, sign: -1, travel: [0.5, 1.0]}   # "turn" is the SECOND half of the right stick's travel
+  # twist (first half of rx), pitch (ry), roll/height (R3 layer) are NOT driven yet.
+
+# Brain readouts. Populations are chosen by region + hemisphere (0 left, 1 right, 2 midline).
+# The connectome is a random prior, so neurons inside a region are exchangeable: a readout is a
+# design choice, not something the wiring "discovered". Use spiderbrain.sim.readout.fit_ridge to
+# train a linear readout on frozen network activity when you need more than lateralised orienting.
+readouts:
+  turn_ccw:  {kind: contrast, plus: {region: dn, hemi: 0}, minus: {region: dn, hemi: 1}, scale: 4.0}
+  forward:   {kind: mean, pops: [{region: dn, hemi: 0}, {region: dn, hemi: 1}], baseline: subtract, scale: 3.0, min: 0.0}
+  pounce:    {kind: zscore_threshold, pop: {region: ab, hemi: 2}, threshold: 3.0, hold_ticks: 3}
+  scan_az:   {kind: contrast, plus: {region: eye_muscle_mn, hemi: 0}, minus: {region: eye_muscle_mn, hemi: 1}, scale: 1.0}
+
+# Non-neural gate (documented shortcut): do not jump unless the defocus depth cue says the target is in range.
+pounce_gate:
+  distance_m: [0.05, 0.40]      # assumption; Jumper jumps roughly one body length (~0.4 m reported "at least 400 mm")
+  require_fovea_contrast: 0.2

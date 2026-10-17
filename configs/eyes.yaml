@@ -1,0 +1,43 @@
+# eyes.yaml -- how pixels from Jumper's single forward camera become photoreceptor drive.
+#
+# Jumper has ONE camera (5 MP, 162 deg diagonal FOV) and a dToF depth sensor, not eight
+# eyes. We emulate two eye TYPES from that stream:
+#   * principal (AME): a narrow, high-acuity, movable strip scanned across the image,
+#     4 tiered channels (Land 1969) -- form, colour and defocus-based distance
+#   * secondary (ALE/PLE/PME): wide-field motion and looming detectors
+# Anything marked `assumption: true` is a modelling choice, not salticid anatomy.
+schema: spiderbrain-eyes/1
+
+ame:
+  # Land 1969: retina is a narrow vertical boomerang, ~20 deg tall, as little as ~1 deg
+  # wide at the centre (about 6 receptors across).
+  strip_height_deg: 20
+  strip_width_deg: 3          # assumption: wider than the retina so a camera pixel grid can sample it
+  strip_pixels: [48, 6]       # assumption: (rows, cols) after resampling
+  gaze_range_deg: {azimuth: [-40, 40], elevation: [-20, 20]}   # assumption: how far the "eye tube" may swing
+  saccade_gain: 1.0           # assumption
+  layers:
+    # Nagata et al. 2012 (Science 335:469): layers 1 and 2 both carry green-sensitive pigment, but green
+    # light is focused only on layer 1, so layer 2 sees a defocused copy whose blur encodes distance.
+    # Layers 3 and 4 hold only ~50 receptors each.
+    L1: {channel: green_sharp}
+    L2: {channel: green_defocus}
+    L3: {channel: uv_proxy}            # assumption: blue channel stands in for UV
+    L4: {channel: luminance_coarse}
+  defocus:
+    # blur sigma (px) of L2 = gain * |1/d - 1/d_ref|, clipped. A monotonic depth cue, not real optics.
+    d_ref_m: 0.40
+    gain_px_m: 0.35
+    max_sigma_px: 4.0
+    red_light_bias: false     # set true to reproduce Nagata's red-light distance UNDERestimate
+
+secondary:
+  # Fractions of the image width seen by each lateral eye type. assumption: true
+  assumption: true
+  ale: {width_fraction_each_side: 0.50}    # anterior lateral: the whole half-field on its side
+  ple: {width_fraction_each_side: 0.33}    # posterior lateral: the outer third on its side
+  pme: {width_fraction_each_side: 0.50, motion_blind: true}   # Steinhoff 2020: probably not motion-detecting
+  motion:
+    frame_diff_gain: 1.0
+    looming_gain: 1.0
+    bins: 64                 # azimuth bins per eye before mapping to receptor position

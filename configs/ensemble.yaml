@@ -1,0 +1,40 @@
+# ensemble.yaml -- how many brains to draw and how much to vary them.
+#
+# One run = one seed = one sampled brain. The point of an ensemble is honesty: if a
+# behaviour appears in only 30% of seeds, say so.
+schema: spiderbrain-ensemble/1
+
+n_seeds: 10
+seed0: 0
+
+# Total neurons. Only regions with `scalable: true` are rescaled to hit the target;
+# photoreceptors and motor pools stay at their anatomical sizes.
+# The only real count is Cupiennius (~100k); every salticid figure is anecdotal
+# (press quote ~100k for Phidippus, ~600k blogged for Portia), hence the wide range.
+total_neurons:
+  default: 100000
+  range: [50000, 600000]
+  sample: false        # true = draw the total log-normally from `range` for each seed
+
+sample_region_sizes: true      # perturb each region's N inside its own 90% range
+sample_projection_k: true      # perturb each projection's k inside its own range
+
+# Degree heterogeneity. Each neuron gets a gamma-distributed propensity (mean 1) so a
+# few neurons are hubs, as in fly connectomes. Smaller shape = heavier tail.
+source_degree_shape: 2.0
+target_degree_shape: 2.0
+
+# Synapses per connected pair: 1 + NegBin(mean-1, dispersion). Fly-like heavy tail.
+synapses_per_connection: {mean: 4.0, dispersion: 1.0}
+
+# Where to write, relative to --out
+outputs:
+  neurons_parquet: true
+  edges_parquet: true
+  weights_npz: true            # signed synapse counts, scipy CSR, rows = target
+  region_graph_graphml: true   # region-level only; neuron-level GraphML is too large
+
+profiles:
+  tiny:    {total_neurons: 5000,   n_seeds: 3}    # unit tests, laptops
+  default: {total_neurons: 100000, n_seeds: 10}   # free Colab T4
+  large:   {total_neurons: 300000, n_seeds: 3}    # Colab Pro L4/A100

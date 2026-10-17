@@ -1,0 +1,5 @@
+cff-version: 1.2.0
+title: spiderbrain-moveset
+message: Synthetic prior ensemble, not a measured connectome.
+authors: [{name: Adhrit Pradeep Ashoka}]
+license: AGPL-3.0-only

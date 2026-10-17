@@ -1,0 +1,87 @@
+# projections.yaml -- who talks to whom in the synthetic brain.
+#
+# >>> PRIORS, NOT MEASUREMENTS. <<<
+# k is the EXPECTED NUMBER OF TARGET NEURONS PER SOURCE NEURON (out-degree), not a
+# probability: specifying degree keeps the network sparse and comparable when the
+# neuron count changes (p = k / N_target). Even tier A only certifies that the
+# connection EXISTS in a real salticid; the numbers are mine.
+#
+# Fields
+#   k.default / k.range  expected out-degree and its 90% prior interval
+#   tier                 A reported in a salticid | B inferred (Cupiennius / fly
+#                        homology) | C speculative
+#   contra               fraction of each source neuron's targets placed in the
+#                        OPPOSITE hemisphere (paired -> paired only). Default 0.
+#   layer_map: matched   source layer i connects only to destination layer i
+#   retinotopic_sigma    topographic wiring: target position ~ source position +
+#                        Gaussian(sigma), positions are fractions of the region
+#   sources              short pointers, expanded in docs/evidence.md
+#
+# Sign comes from the SOURCE neuron's transmitter (Dale's law), see transmitters.yaml.
+schema: spiderbrain-projections/1
+
+projections:
+  # ---- principal-eye pathway: AME -> AM1 -> AM2 -> arcuate body ---------------
+  - {name: ame_to_am1,  src: ame_pr, dst: am1, k: {default: 8,  range: [4, 20]},  tier: A, layer_map: matched, retinotopic_sigma: 0.01, sources: ["Steinhoff 2020", "Hasarius cne.24584"]}
+  - {name: am1_to_am2,  src: am1,    dst: am2, k: {default: 20, range: [5, 50]},  tier: A, sources: ["Steinhoff 2020 (thick tract)"]}
+  - {name: am1_to_ab,   src: am1,    dst: ab,  k: {default: 3,  range: [0, 10]},  tier: A, sources: ["Steinhoff 2020 (thin connection)"]}
+  - {name: am2_to_ab,   src: am2,    dst: ab,  k: {default: 30, range: [10, 80]}, tier: A, sources: ["Steinhoff 2020", "Strausfeld et al. 1993"]}
+
+  # ---- lateral / median secondary eyes ---------------------------------------
+  - {name: ale_to_al1,  src: ale_pr, dst: al1, k: {default: 8, range: [4, 20]}, tier: A, retinotopic_sigma: 0.02, sources: ["Steinhoff 2020"]}
+  - {name: ple_to_pl1,  src: ple_pr, dst: pl1, k: {default: 8, range: [4, 20]}, tier: A, retinotopic_sigma: 0.02, sources: ["Steinhoff 2020"]}
+  - {name: pme_to_pm1,  src: pme_pr, dst: pm1, k: {default: 8, range: [4, 20]}, tier: A, retinotopic_sigma: 0.02, sources: ["Steinhoff 2020"]}
+  - {name: al1_to_al2pl2, src: al1, dst: al2pl2, k: {default: 15, range: [5, 40]}, tier: A, sources: ["Steinhoff 2020"]}
+  - {name: pl1_to_al2pl2, src: pl1, dst: al2pl2, k: {default: 15, range: [5, 40]}, tier: A, sources: ["Steinhoff 2020"]}
+  - {name: al1_to_l2,   src: al1, dst: l2, k: {default: 10, range: [3, 30]}, tier: A, sources: ["Steinhoff 2020 (shared L2)"]}
+  - {name: pl1_to_l2,   src: pl1, dst: l2, k: {default: 10, range: [3, 30]}, tier: A, sources: ["Steinhoff 2020 (shared L2)"]}
+  - {name: al1_to_ab,   src: al1, dst: ab, k: {default: 3, range: [0, 10]}, tier: A, sources: ["Steinhoff 2020 (AL1x/PL1x tract toward the AB)", "Babu & Barth 1984"]}
+  - {name: pl1_to_ab,   src: pl1, dst: ab, k: {default: 3, range: [0, 10]}, tier: A, sources: ["Steinhoff 2020"]}
+  - {name: pm1_to_ab,   src: pm1, dst: ab, k: {default: 5, range: [1, 15]}, tier: A, sources: ["Steinhoff 2020 (PM1 projects directly to the AB)"]}
+
+  # ---- mushroom body ----------------------------------------------------------
+  - {name: al2pl2_to_mb, src: al2pl2, dst: mb_globuli, k: {default: 25, range: [8, 60]}, tier: A, sources: ["Steinhoff 2020 (chiasm onto the pedunculus)"]}
+  - {name: l2_to_mb,     src: l2,     dst: mb_globuli, k: {default: 10, range: [3, 30]}, tier: A, sources: ["Steinhoff 2020"]}
+  - {name: mb_to_mbout,  src: mb_globuli, dst: mb_out, k: {default: 10, range: [3, 30]}, tier: B, sources: ["Strausfeld & Barth 1993", "fly MB homology (contested)"]}
+  - {name: mb_bridge,    src: mb_globuli, dst: mb_globuli, contra: 1.0, k: {default: 5, range: [1, 15]}, tier: A, sources: ["Steinhoff 2020 (MB bridge links the two pedunculi)"]}
+  - {name: mbout_to_dn,  src: mb_out, dst: dn,  k: {default: 20, range: [5, 60]}, tier: B, sources: ["Strausfeld & Barth 1993"]}
+  - {name: mbout_to_pn,  src: mb_out, dst: pn,  k: {default: 20, range: [5, 60]}, tier: B, sources: ["Strausfeld & Barth 1993"]}
+  - {name: mbout_to_ab,  src: mb_out, dst: ab,  k: {default: 5,  range: [0, 20]}, tier: C, sources: ["speculative"]}
+
+  # ---- arcuate body and protocerebral neuropil --------------------------------
+  - {name: ab_recurrent, src: ab, dst: ab, k: {default: 20, range: [5, 60]}, tier: B, sources: ["central-complex analogy (Uloborus atlas, eLife RP 107732)"]}
+  - {name: ab_to_pn,     src: ab, dst: pn, k: {default: 10, range: [3, 30]}, tier: B, sources: ["central-complex analogy"]}
+  - {name: ab_to_dn,     src: ab, dst: dn, k: {default: 10, range: [3, 30]}, tier: B, sources: ["AB as locomotion-control centre (Steinhoff 2018)"]}
+  - {name: pn_recurrent, src: pn, dst: pn, k: {default: 30, range: [10, 80]}, tier: C, sources: ["speculative"]}
+  - {name: pn_to_ab,     src: pn, dst: ab, k: {default: 8,  range: [2, 25]},  tier: C, sources: ["speculative"]}
+  - {name: pn_to_dn,     src: pn, dst: dn, k: {default: 15, range: [4, 45]},  tier: C, sources: ["speculative"]}
+  - {name: pn_to_eyemuscle, src: pn, dst: eye_muscle_mn, k: {default: 10, range: [2, 30]}, tier: C, sources: ["lateral-eye-driven saccades: Jakob et al. 2018 Curr Biol"]}
+  - {name: pn_to_chel,   src: pn,   dst: chel,      k: {default: 8, range: [2, 25]}, tier: C, sources: ["speculative"]}
+  - {name: chel_to_pn,   src: chel, dst: pn,        k: {default: 8, range: [2, 25]}, tier: C, sources: ["speculative"]}
+  - {name: pn_to_stomodeal, src: pn, dst: stomodeal, k: {default: 8, range: [2, 25]}, tier: C, sources: ["speculative"]}
+  - {name: stomodeal_to_pn, src: stomodeal, dst: pn, k: {default: 8, range: [2, 25]}, tier: C, sources: ["speculative"]}
+
+  # ---- neuromodulatory broadcast ----------------------------------------------
+  - {name: mod_to_mb,    src: neuromod, dst: mb_globuli, k: {default: 200, range: [50, 1000]}, tier: B, sources: ["volume-like broadcast"]}
+  - {name: mod_to_ab,    src: neuromod, dst: ab,         k: {default: 200, range: [50, 1000]}, tier: B, sources: ["Hylyphantes NE neurons above the central body"]}
+  - {name: mod_to_pn,    src: neuromod, dst: pn,         k: {default: 200, range: [50, 1000]}, tier: C, sources: ["volume-like broadcast"]}
+  - {name: mod_to_legln, src: neuromod, dst: leg_ln,     k: {default: 200, range: [50, 1000]}, tier: B, sources: ["6 omnisegmental histaminergic neurons, Cupiennius"]}
+
+  # ---- descending control of the legs -----------------------------------------
+  - {name: dn_to_legln,  src: dn, dst: leg_ln,   k: {default: 40, range: [12, 120]}, tier: B, sources: ["Strausfeld & Barth 1993"]}
+  - {name: dn_to_pedipalp, src: dn, dst: pedipalp, k: {default: 10, range: [3, 30]}, tier: B, sources: ["assumption"]}
+  - {name: dn_to_legmn,  src: dn, dst: leg_mn,   k: {default: 3,  range: [0, 10]},  tier: C, sources: ["few direct DN->MN contacts in insects"]}
+  - {name: legln_recurrent, src: leg_ln, dst: leg_ln, k: {default: 40, range: [15, 100]}, tier: B, sources: ["fly VNC premotor motifs (MANC / BANC)"]}
+  - {name: legln_to_legmn, src: leg_ln, dst: leg_mn, k: {default: 10, range: [3, 30]},  tier: B, sources: ["fly VNC premotor motifs"]}
+  - {name: legprop_to_legln, src: leg_prop, dst: leg_ln, k: {default: 10, range: [3, 30]}, tier: B, sources: ["assumption"]}
+  - {name: legprop_to_an,    src: leg_prop, dst: an,     k: {default: 3,  range: [0, 10]}, tier: C, sources: ["assumption"]}
+  - {name: legln_to_an,  src: leg_ln, dst: an,   k: {default: 5,  range: [1, 15]}, tier: C, sources: ["assumption"]}
+  - {name: an_to_pn,     src: an, dst: pn,       k: {default: 10, range: [3, 30]}, tier: B, sources: ["Babu & Barth 1984 (ascending fibres)"]}
+  - {name: an_to_ab,     src: an, dst: ab,       k: {default: 5,  range: [1, 15]}, tier: C, sources: ["speculative"]}
+
+  # ---- suboesophageal glue ----------------------------------------------------
+  - {name: segln_to_legln, src: seg_ln, dst: leg_ln, k: {default: 15, range: [5, 45]}, tier: C, sources: ["assumption"]}
+  - {name: legln_to_segln, src: leg_ln, dst: seg_ln, k: {default: 15, range: [5, 45]}, tier: C, sources: ["assumption"]}
+  - {name: pedipalp_to_segln, src: pedipalp, dst: seg_ln, k: {default: 10, range: [3, 30]}, tier: C, sources: ["assumption"]}
+  - {name: opisth_to_segln,   src: opisth,   dst: seg_ln, k: {default: 10, range: [3, 30]}, tier: C, sources: ["assumption"]}
+  - {name: segln_to_an,  src: seg_ln, dst: an, k: {default: 8, range: [2, 25]}, tier: C, sources: ["assumption"]}

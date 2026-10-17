@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+.ipynb_checkpoints/
+
+# Generated connectomes are large and reproducible from (config, seed).
+runs/
+out/
+*.npz
+*.parquet
+!tests/fixtures/*.npz
+
+# Third-party data is downloaded by the user, never committed.
+data/raw/

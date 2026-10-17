@@ -1,0 +1,279 @@
+# regions.yaml -- the neuron populations of the synthetic jumping-spider brain.
+#
+# >>> EVERY NUMBER HERE IS A PRIOR, NOT A MEASUREMENT. <<<
+# No jumping-spider connectome, EM volume or brain cell atlas exists (searched
+# Oct 2026). The *existence* of most visual pathways is reported in
+# Marpissa muscosa (Steinhoff et al. 2020); the *sizes* are guesses scaled from
+# the one real spider neuron count (Cupiennius salei, Babu & Barth 1984:
+# ~50,900 brain cells + ~49,000 suboesophageal) and the retina counts of Land 1969.
+#
+# Fields
+#   n.default / n.range  total neurons, both hemispheres. range is a 90% prior
+#                        interval; the ensemble samples inside it (log-normal).
+#   tier                 evidence tier for the region EXISTING / being wired as
+#                        described:  A reported in a salticid   B inferred from
+#                        Cupiennius or fly homology   C speculative
+#   n_tier               evidence tier for the SIZE (almost always C)
+#   paired               true = a left and right copy; false = one midline structure
+#   scalable             false = anatomy fixes the size (e.g. photoreceptors); the
+#                        global neuron-count knob only rescales scalable regions
+#   layers               split into this many retinotopic layers (AME tiers -> AM1 zones)
+#   cls                  sensory | interneuron | modulatory | descending | ascending | motor
+#   source               short pointers, expanded in docs/evidence.md
+schema: spiderbrain-regions/1
+
+regions:
+  # ---- primary-eye (AME) pathway -------------------------------------------
+  ame_pr:
+    label: Principal-eye (AME) photoreceptors, 4-tiered retina
+    n: {default: 2400, range: [1600, 3000]}
+    tier: A
+    n_tier: A
+    paired: true
+    scalable: false
+    layers: 4
+    cls: sensory
+    source: ["Land 1969 J Exp Biol 51:443 (<1500 receptors/eye; ~1200 in Metaphidippus)"]
+  am1:
+    label: First-order neuropil of AME (zones TZ1-TZ4 receive the four retinal tiers)
+    n: {default: 4000, range: [2000, 10000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    layers: 4
+    cls: interneuron
+    source: ["Steinhoff et al. 2020 J Comp Neurol cne.24861", "Hasarius: cne.24584 (tier->zone projection)"]
+  am2:
+    label: Second-order neuropil of AME
+    n: {default: 3000, range: [1000, 8000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020"]
+
+  # ---- secondary-eye pathways ----------------------------------------------
+  ale_pr:
+    label: Anterior lateral eye (ALE) photoreceptors
+    n: {default: 4000, range: [1000, 10000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: false
+    cls: sensory
+    source: ["no receptor count found"]
+  ple_pr:
+    label: Posterior lateral eye (PLE) photoreceptors
+    n: {default: 4000, range: [1000, 10000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: false
+    cls: sensory
+    source: ["no receptor count found"]
+  pme_pr:
+    label: Posterior median eye (PME) photoreceptors (tiny eyes)
+    n: {default: 200, range: [40, 600]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: false
+    cls: sensory
+    source: ["Steinhoff et al. 2020 (PME small; probably not motion-detecting)"]
+  al1:
+    label: First-order neuropil of ALE
+    n: {default: 3000, range: [1000, 8000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020"]
+  pl1:
+    label: First-order neuropil of PLE
+    n: {default: 3000, range: [1000, 8000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020"]
+  pm1:
+    label: First-order neuropil of PME (projects straight to the arcuate body)
+    n: {default: 400, range: [100, 1500]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020"]
+  al2pl2:
+    label: Glomerular second-order neuropils AL2 / PL2
+    n: {default: 2000, range: [600, 6000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020 (AL2/PL2 glomerular, feeds the mushroom body)"]
+  l2:
+    label: Shared second-order neuropil L2 of the lateral eyes
+    n: {default: 1600, range: [500, 5000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2020 (L2 might enable faster movement decisions)"]
+
+  # ---- higher-order centres -------------------------------------------------
+  mb_globuli:
+    label: Mushroom-body intrinsic neurons (globuli cells, pedunculus / haft / bridge)
+    n: {default: 10000, range: [4000, 20000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2017 Arthropod Struct Dev", "Babu & Barth 1984 (compact globuli masses)"]
+  mb_out:
+    label: Mushroom-body output / giant output neurons
+    n: {default: 200, range: [50, 600]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Strausfeld & Barth 1993 (Cupiennius giant output neurons -> descending pathways)"]
+  ab:
+    label: Arcuate body (unpaired midline; receives principal-eye pathway; locomotion control)
+    n: {default: 4000, range: [2000, 10000]}
+    tier: A
+    n_tier: C
+    paired: false
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2017/2018 (AB enlarged by physical enrichment)", "Loesel et al. 2011"]
+  pn:
+    label: Protocerebral neuropil and unassigned protocerebral interneurons
+    n: {default: 15000, range: [6000, 40000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2017"]
+  chel:
+    label: Deutocerebrum / cheliceral neuropil
+    n: {default: 2000, range: [800, 5000]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2017"]
+  stomodeal:
+    label: Stomodeal bridge / tritocerebrum (allatostatin-rich, midline)
+    n: {default: 500, range: [200, 1500]}
+    tier: A
+    n_tier: C
+    paired: false
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2017"]
+  neuromod:
+    label: Neuromodulatory neurons (octopamine, serotonin, dopamine, 6 histaminergic omnisegmental)
+    n: {default: 556, range: [200, 1500]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: modulatory
+    source: ["Cupiennius: 6 omnisegmental histaminergic neurons; Hylyphantes atlas: NE/octopamine neurons above the central body"]
+
+  # ---- descending / ascending / motor ---------------------------------------
+  dn:
+    label: Descending neurons (brain -> suboesophageal mass)
+    n: {default: 600, range: [200, 2000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: descending
+    source: ["Babu & Barth 1984 (fibres in longitudinal tracts)"]
+  an:
+    label: Ascending neurons (suboesophageal mass -> brain)
+    n: {default: 1000, range: [300, 3000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: ascending
+    source: ["Babu & Barth 1984"]
+  eye_muscle_mn:
+    label: Motor neurons of the principal-eye retina muscles (6 muscles per eye)
+    n: {default: 24, range: [12, 80]}
+    tier: A
+    n_tier: C
+    paired: true
+    scalable: false
+    cls: motor
+    source: ["Land 1969 (eye tube moved by six muscles per eye)"]
+
+  # ---- suboesophageal mass ---------------------------------------------------
+  pedipalp:
+    label: Pedipalp neuromeres
+    n: {default: 5000, range: [2000, 10000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2024 J Comp Neurol 532:e25554 (VNC is 55% of CNS volume in Marpissa)"]
+  leg_ln:
+    label: Leg neuromere interneurons (L1-L4, 8 hemineuromeres)
+    n: {default: 34800, range: [14000, 78000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2024", "fly MANC/BANC premotor motifs (homology)"]
+  leg_mn:
+    label: Leg motor neurons (~150 per hemineuromere)
+    n: {default: 1200, range: [600, 2400]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: false
+    cls: motor
+    source: ["assumption: ~150 per hemineuromere"]
+  leg_prop:
+    label: Leg proprioceptive / mechanosensory afferents
+    n: {default: 2000, range: [500, 6000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: sensory
+    source: ["Cupiennius mechanosensory literature (not itemised here)"]
+  opisth:
+    label: Opisthosomal neuropil
+    n: {default: 2000, range: [500, 5000]}
+    tier: B
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["Steinhoff et al. 2024"]
+  seg_ln:
+    label: Intersegmental / other suboesophageal interneurons
+    n: {default: 6000, range: [2000, 15000]}
+    tier: C
+    n_tier: C
+    paired: true
+    scalable: true
+    cls: interneuron
+    source: ["assumption"]
