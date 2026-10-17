@@ -96,3 +96,12 @@ def test_mock_arena_orients_and_pounces(cfg):
     m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     _, pounce = m.run(seed=0, verbose=False)
     assert pounce is not None and 0.05 <= pounce[1] <= 0.40
+
+
+def test_search_finds_prey_behind(cfg):
+    """Prey starts out of view (100 deg left): the brain must search, find it, approach and pounce."""
+    import importlib.util, pathlib, math
+    spec = importlib.util.spec_from_file_location("mock_arena", pathlib.Path(__file__).parents[1] / "scripts" / "mock_arena.py")
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    _, pounce = m.run(seed=0, prey=(-0.3, 1.2), steps=1500, verbose=False)
+    assert pounce is not None

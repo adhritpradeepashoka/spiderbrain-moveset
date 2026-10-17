@@ -98,7 +98,7 @@ def main():
                 return
             with open(a.log, "w", newline="") as f:
                 w = csv.writer(f)
-                w.writerow(["t_s", "dist_m", "bearing_deg", "turn_cmd", "fwd_cmd", "pounce_cmd", "gate_open", "robot_x", "robot_y", "prey_x", "prey_y", "yaw_deg", "pad_ly", "pad_rx", "pad_A"])
+                w.writerow(["t_s", "dist_m", "bearing_deg", "turn_cmd", "fwd_cmd", "pounce_cmd", "gate_open", "robot_x", "robot_y", "prey_x", "prey_y", "yaw_deg", "search", "pad_ly", "pad_rx", "pad_A"])
                 w.writerows(self.rows)
             print(f"[spiderbrain] wrote {len(self.rows)} ticks to {a.log}; pounce commands with gate open: {self._pounces}", flush=True)
 
@@ -109,27 +109,32 @@ def main():
                 return [0.0, 0.0]
 
         def _place_prey(self, u, x, y):
+            """x, y are WORLD coordinates."""
             import torch
             ball = u.scene[a.prey_entity]
             dev = ball.data.root_link_pos_w.device
-            ox, oy = self._origin(u)
             z = float(ball.data.root_link_pos_w[0][2]) if self._t else 0.055
-            st = torch.tensor([[ox + x, oy + y, z, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
+            st = torch.tensor([[x, y, z, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
             ball.write_root_state_to_sim(st)
 
         def _person(self, now_us):
             u = self._env_ref.unwrapped
             s = self._t / self._hz
-            if a.prey_entity and not a.no_puppet:
-                self._place_prey(u, *prey_path(s, a.prey_start))
-            if a.prey_entity:
-                px, py = [float(v) for v in u.scene[a.prey_entity].data.root_link_pos_w[0][:2]]
-            else:
-                ox, oy = self._origin(u)
-                px, py = (ox, oy)[0] + prey_path(s, a.prey_start)[0], (ox, oy)[1] + prey_path(s, a.prey_start)[1]
             robot = u.scene["robot"]
             rx_, ry_ = [float(v) for v in robot.data.root_link_pos_w[0][:2]]
             yaw = yaw_from_quat_wxyz(robot.data.root_link_quat_w[0])
+            if self._t == 0:                         # the prey lives in the robot's INITIAL frame (+x ahead, +y left)
+                self._x0, self._y0, self._yaw0 = rx_, ry_, yaw
+                print(f"[spiderbrain] robot starts at ({rx_:.2f},{ry_:.2f}) facing {math.degrees(yaw):+.0f} deg", flush=True)
+            fx, fy = prey_path(s, a.prey_start)
+            wx = self._x0 + fx * math.cos(self._yaw0) - fy * math.sin(self._yaw0)
+            wy = self._y0 + fx * math.sin(self._yaw0) + fy * math.cos(self._yaw0)
+            if a.prey_entity and not a.no_puppet:
+                self._place_prey(u, wx, wy)
+            if a.prey_entity:
+                px, py = [float(v) for v in u.scene[a.prey_entity].data.root_link_pos_w[0][:2]]
+            else:
+                px, py = wx, wy
             dx, dy = px - rx_, py - ry_
             dist = math.hypot(dx, dy)
             bearing = (math.atan2(dy, dx) - yaw + math.pi) % (2 * math.pi) - math.pi      # + = left (CCW)
@@ -141,11 +146,11 @@ def main():
             if self._t % int(self._hz) == 0:
                 print(f"[spiderbrain] t={s:5.1f}s dist={dist:.2f} bearing={math.degrees(bearing):+4.0f} "
                       f"turn={self.last_cmd.get('turn_ccw', 0):+.2f} fwd={self.last_cmd.get('forward', 0):.2f} "
-                      f"gate={'open' if self._bc.pad.gate_ok else 'shut'}", flush=True)
+                      f"gate={'open' if self._bc.pad.gate_ok else 'shut'}{' SEARCH' if self.last_cmd.get('search') else ''}", flush=True)
             st = self._bc.pad.state()
             self.rows.append((round(s, 3), round(dist, 3), round(math.degrees(bearing), 1), round(self.last_cmd.get('turn_ccw', 0), 3),
                               round(self.last_cmd.get('forward', 0), 3), int(bool(self.last_cmd.get('pounce'))), int(self._bc.pad.gate_ok),
-                              round(rx_, 3), round(ry_, 3), round(px, 3), round(py, 3), round(math.degrees(yaw), 1), round(st.ly, 3), round(st.rx, 3), int(bool(st.A))))
+                              round(rx_, 3), round(ry_, 3), round(px, 3), round(py, 3), round(math.degrees(yaw), 1), int(bool(self.last_cmd.get('search'))), round(st.ly, 3), round(st.rx, 3), int(bool(st.A))))
             self._t += 1
             return super()._person(now_us)                       # reads self._bc.pad.state()
 

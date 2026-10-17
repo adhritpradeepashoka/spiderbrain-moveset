@@ -111,11 +111,11 @@ def fit_ridge_readout(conn, cfg, episodes=60, ticks=120, hz=50.0, seed=0, backen
     for ep in range(episodes):
         bc.net.reset()
         empty = rng.random() < p_empty
-        b = rng.uniform(-50, 50)
+        b = rng.uniform(-58, 58)
         d = rng.uniform(0.08, 1.5)
         phase = rng.uniform(0, 6.28)
         for t in range(ticks):
-            b = np.clip(b + rng.normal(0, 0.8), -55, 55)
+            b = np.clip(b + rng.normal(0, 0.8), -62, 62)
             wig = 6 * np.sin(phase + t / 6)          # prey always moves a little: lateral eyes are motion detectors
             d = np.clip(d + rng.normal(0, 0.01), 0.06, 1.6)
             frame = np.zeros((120, 160, 3), np.float32) if empty else render_prey_frame(np.deg2rad(b + wig), d)
