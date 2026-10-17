@@ -11,7 +11,7 @@ spiderbrain generate --profile tiny --out out        # ~11k neurons, seconds
 spiderbrain generate --profile default --out out     # ~100k neurons, ~5M edges, ~15 s/seed on CPU
 pytest
 ```
-Colab: open `notebooks/colab_quickstart.ipynb` (installs the package, generates, simulates; uses the GPU via torch sparse if present, otherwise numpy).
+Jumper on Colab: `notebooks/jumper_demo.ipynb` (installs Jumper, runs the brain-driven demo; untested end to end). Brain only: open `notebooks/colab_quickstart.ipynb` (installs the package, generates, simulates; uses the GPU via torch sparse if present, otherwise numpy).
 
 ## What's inside
 | Path | What |
@@ -21,6 +21,7 @@ Colab: open `notebooks/colab_quickstart.ipynb` (installs the package, generates,
 | `src/spiderbrain/generate.py` | degree-corrected stochastic wiring, retinotopy, Dale's law, NB synapse counts |
 | `src/spiderbrain/sim/` | leaky rate network (numpy or torch) and readouts |
 | `src/spiderbrain/sensors/eyes.py` | camera frame → AME strip (4 tiers, defocus depth cue) and motion-based secondary eyes |
+| `src/spiderbrain/robot/loop.py`, `scripts/play_with_brain.py`, `scripts/mock_arena.py` | closed control loop, Jumper launcher, kinematic test arena |
 | `src/spiderbrain/robot/bridge.py` | readouts → Jumper gamepad state (turn, forward, pounce = jump) |
 | `src/spiderbrain/motion/` | swing-then-fling jump template; Dryad *Maratus* loader stub |
 | `configs/movesets.yaml` | Jumper mode names/bindings and readout definitions |
