@@ -83,10 +83,11 @@ def main():
 
     class BrainAppPlayer(Orig):
         def __init__(self, app, env, *, pad=None):
-            self._bc = BrainController(conn, cfg, control_hz=app.control_hz, readout=readout, gaze_follow=False)
+            self._bc = BrainController(conn, cfg, control_hz=app.control_hz, brain_hz=50.0, readout=readout, gaze_follow=False)
             super().__init__(app, env, pad=self._bc.pad)       # BrainPad has state() and connected
             self._env_ref, self._t, self._hz, self.last_cmd = env, 0, app.control_hz, {}
             self._pounces = 0
+            print(f"[spiderbrain] Jumper control rate {app.control_hz:g} Hz; brain ticks every {self._bc.every} control steps", flush=True)
             self.rows = []
             import atexit
             atexit.register(self._flush)
