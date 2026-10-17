@@ -14,6 +14,29 @@ import argparse, math, os, runpy, sys
 from pathlib import Path
 
 
+def _bootstrap():
+    """Install this repo's few dependencies into whatever Python is running us, and say plainly if that fails."""
+    import importlib, subprocess
+    need = {"yaml": "pyyaml", "pyarrow": "pyarrow", "scipy": "scipy", "pandas": "pandas", "numpy": "numpy"}
+    missing = []
+    for mod, pipname in need.items():
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(pipname)
+    if not missing:
+        return
+    print(f"[spiderbrain] python={sys.executable}; installing missing: {missing}", flush=True)
+    r = subprocess.run([sys.executable, "-m", "pip", "install", *missing], capture_output=True, text=True)
+    if r.returncode:
+        subprocess.run([sys.executable, "-m", "ensurepip", "--upgrade"], capture_output=True, text=True)
+        r = subprocess.run([sys.executable, "-m", "pip", "install", *missing], capture_output=True, text=True)
+    print((r.stdout + r.stderr)[-1500:], flush=True)
+    if r.returncode:
+        raise SystemExit(f"[spiderbrain] could not install {missing} into {sys.executable}; see pip output above")
+    importlib.invalidate_caches()
+
+
 def yaw_from_quat_wxyz(q):
     w, x, y, z = [float(v) for v in q]
     return math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
@@ -35,6 +58,7 @@ def main():
     ap.add_argument("--fidget-deg", type=float, default=3.0, help="apparent prey jitter (lateral eyes are motion detectors)")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
+    _bootstrap()
     rest = [r for r in a.rest if r != "--"]
 
     sys.path[:0] = [str(a.jumper), str(a.jumper / "rl"), str(Path(__file__).resolve().parents[1] / "src")]
