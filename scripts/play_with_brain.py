@@ -27,8 +27,13 @@ def _bootstrap():
     if not missing:
         return
     print(f"[spiderbrain] python={sys.executable}; installing missing: {missing}", flush=True)
-    r = subprocess.run([sys.executable, "-m", "pip", "install", *missing], capture_output=True, text=True)
-    if r.returncode:
+    import shutil
+    uv = shutil.which("uv")
+    if uv:        # a uv-made venv has no pip
+        r = subprocess.run([uv, "pip", "install", "--python", sys.executable, *missing], capture_output=True, text=True)
+    else:
+        r = subprocess.run([sys.executable, "-m", "pip", "install", *missing], capture_output=True, text=True)
+    if r.returncode and not uv:
         subprocess.run([sys.executable, "-m", "ensurepip", "--upgrade"], capture_output=True, text=True)
         r = subprocess.run([sys.executable, "-m", "pip", "install", *missing], capture_output=True, text=True)
     print((r.stdout + r.stderr)[-1500:], flush=True)
