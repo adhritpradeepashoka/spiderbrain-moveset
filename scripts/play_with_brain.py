@@ -66,7 +66,7 @@ def main():
     _bootstrap()
     rest = [r for r in a.rest if r != "--"]
 
-    sys.path[:0] = [str(a.jumper), str(a.jumper / "rl"), str(Path(__file__).resolve().parents[1] / "src")]
+    sys.path[:0] = [str(a.jumper), str(a.jumper / "scripts"), str(a.jumper / "rl"), str(Path(__file__).resolve().parents[1] / "src")]
     from spiderbrain.config import load_config, with_profile
     from spiderbrain.generate import generate
     from spiderbrain.robot.loop import BrainController, render_prey_frame
