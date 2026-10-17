@@ -4,6 +4,8 @@ A seeded generator of **synthetic jumping-spider (Salticidae) connectome priors*
 
 > **This is not a measured connectome.** No jumping-spider connectome, EM volume or brain cell atlas exists (searched Oct 2026). Region *existence* and many pathways follow *Marpissa muscosa* (Steinhoff et al. 2020); every size and wiring density is a prior set in `configs/`, tagged with an evidence tier (A reported in a salticid, B inferred from other spiders/flies, C speculative). The output is an **ensemble** of plausible brains. Report results across seeds, not for one.
 
+> **Not affiliated with or endorsed by KingKong Technology.** "Jumper" and "KingKong" belong to their owners. This project only describes how to drive their Apache-2.0 open-source simulator; it contains none of their code, logos or assets.
+
 ## Quick start
 ```bash
 pip install -e ".[dev]"
