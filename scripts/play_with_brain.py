@@ -61,6 +61,7 @@ def main():
     ap.add_argument("--prey-start", type=float, nargs=2, default=(1.2, 0.5), help="prey start, metres from the robot's start")
     ap.add_argument("--no-puppet", action="store_true", help="do not move the prey entity; just read its position")
     ap.add_argument("--fidget-deg", type=float, default=3.0, help="apparent prey jitter (lateral eyes are motion detectors)")
+    ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
     _bootstrap()
@@ -86,6 +87,19 @@ def main():
             super().__init__(app, env, pad=self._bc.pad)       # BrainPad has state() and connected
             self._env_ref, self._t, self._hz, self.last_cmd = env, 0, app.control_hz, {}
             self._pounces = 0
+            self.rows = []
+            import atexit
+            atexit.register(self._flush)
+
+        def _flush(self):
+            import csv
+            if not self.rows:
+                return
+            with open(a.log, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["t_s", "dist_m", "bearing_deg", "turn_cmd", "fwd_cmd", "pounce_cmd", "gate_open", "robot_x", "robot_y", "prey_x", "prey_y", "yaw_deg", "pad_ly", "pad_rx", "pad_A"])
+                w.writerows(self.rows)
+            print(f"[spiderbrain] wrote {len(self.rows)} ticks to {a.log}; pounce commands with gate open: {self._pounces}", flush=True)
 
         def _origin(self, u):
             try:
@@ -127,6 +141,10 @@ def main():
                 print(f"[spiderbrain] t={s:5.1f}s dist={dist:.2f} bearing={math.degrees(bearing):+4.0f} "
                       f"turn={self.last_cmd.get('turn_ccw', 0):+.2f} fwd={self.last_cmd.get('forward', 0):.2f} "
                       f"gate={'open' if self._bc.pad.gate_ok else 'shut'}", flush=True)
+            st = self._bc.pad.state()
+            self.rows.append((round(s, 3), round(dist, 3), round(math.degrees(bearing), 1), round(self.last_cmd.get('turn_ccw', 0), 3),
+                              round(self.last_cmd.get('forward', 0), 3), int(bool(self.last_cmd.get('pounce'))), int(self._bc.pad.gate_ok),
+                              round(rx_, 3), round(ry_, 3), round(px, 3), round(py, 3), round(math.degrees(yaw), 1), round(st.ly, 3), round(st.rx, 3), int(bool(st.A))))
             self._t += 1
             return super()._person(now_us)                       # reads self._bc.pad.state()
 
