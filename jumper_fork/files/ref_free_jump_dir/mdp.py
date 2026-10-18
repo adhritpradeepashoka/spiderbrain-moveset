@@ -137,4 +137,17 @@ def flight_target(env, command_name: str = "jump", sigma: float = 0.25) -> torch
     return torch.exp(-d2 / sigma**2) * cmd.in_flight.float()
 
 
-__all__ = ["DirJumpCommand", "DirJumpCommandCfg", "flight_target", "jump_target", "landing_target"]
+def forward_gain(env, command_name: str = "jump", cap_m: float = 0.30, flight_frac: float = 0.3) -> torch.Tensor:
+    """LINEAR progress toward the target direction (no kernel, so it has a gradient everywhere): the distance covered
+    along the unit target direction, capped. Paid after the episode's own landing from the latched landing point, and
+    (scaled by flight_frac) during flight from the live base position."""
+    cmd = env.command_manager.get_term(command_name)
+    d = cmd.target_xy
+    u = d / d.norm(dim=1, keepdim=True).clamp_min(1e-6)
+    has = (d.norm(dim=1) > 0.02).float()
+    land = (cmd.land_xy * u).sum(dim=1).clamp(-0.05, cap_m)
+    live = (cmd.base_xy() * u).sum(dim=1).clamp(-0.05, cap_m)
+    return has * (land * (cmd.landed & ~cmd.second_jump).float() + flight_frac * live * cmd.in_flight.float())
+
+
+__all__ = ["DirJumpCommand", "DirJumpCommandCfg", "flight_target", "forward_gain", "jump_target", "landing_target"]

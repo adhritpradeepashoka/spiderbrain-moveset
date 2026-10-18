@@ -8,6 +8,8 @@ actor and critic gain `jump_target` as their LAST term (the warm-start script re
 Environment variables (so scripts/ need no change):
   JUMP_TARGET_MAX   largest forward target in metres after the curriculum      (default 0.30)
   JUMP_RAMP_ITERS   "100,1500": curriculum start,end in iterations of THIS run (default 100,1500)
+  JUMP_LAND_W / JUMP_FLIGHT_W / JUMP_FWD_W   reward weights (FWD_W>0 adds the linear forward_gain term)
+  JUMP_LATERAL_FRAC / JUMP_ZERO_FRAC / JUMP_APEX_SCALE   command mix; scale on apex/flight height rewards
   JUMP_TARGET_X/Y   replay only: fixed landing offset in metres               (default 0.20, 0.0)
 """
 
@@ -23,9 +25,9 @@ from ..ref_free_jump import env_cfg as base
 from ..ref_free_jump.rl_cfg import NUM_STEPS_PER_ENV
 from . import mdp as dmdp
 
-LANDING_WEIGHT = 6.0
+LANDING_WEIGHT = float(os.environ.get("JUMP_LAND_W", "6.0"))
 LANDING_SIGMA_M = 0.10
-FLIGHT_WEIGHT = 2.0
+FLIGHT_WEIGHT = float(os.environ.get("JUMP_FLIGHT_W", "2.0"))
 FLIGHT_SIGMA_M = 0.25
 TARGET_OBS_SCALE_M = 0.10
 
@@ -41,6 +43,8 @@ def env_cfg(asset=None, play: bool = False):
         target_max_m=float(os.environ.get("JUMP_TARGET_MAX", "0.30")),
         ramp_start_step=r0 * NUM_STEPS_PER_ENV,
         ramp_end_step=r1 * NUM_STEPS_PER_ENV,
+        lateral_frac=float(os.environ.get("JUMP_LATERAL_FRAC", "0.5")),
+        zero_frac=float(os.environ.get("JUMP_ZERO_FRAC", "0.2")),
     )
     if play:
         extra["fixed_target"] = (
@@ -66,6 +70,16 @@ def env_cfg(asset=None, play: bool = False):
         func=dmdp.flight_target, weight=FLIGHT_WEIGHT,
         params={"command_name": "jump", "sigma": FLIGHT_SIGMA_M},
     )
+    fwd_w = float(os.environ.get("JUMP_FWD_W", "0.0"))
+    if fwd_w > 0:
+        cfg.rewards["forward_gain"] = RewardTermCfg(
+            func=dmdp.forward_gain, weight=fwd_w, params={"command_name": "jump"},
+        )
+    apex_scale = float(os.environ.get("JUMP_APEX_SCALE", "1.0"))
+    if apex_scale != 1.0:
+        for name in ("apex_height", "flight_height"):
+            if name in cfg.rewards:
+                cfg.rewards[name].weight *= apex_scale
     return cfg
 
 
