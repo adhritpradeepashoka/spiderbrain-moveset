@@ -55,9 +55,9 @@ if __name__ == "__main__":
     ap.add_argument("--jumper", required=True); ap.add_argument("--kp", type=float, default=20.0)
     ap.add_argument("--gens", type=int, default=200); ap.add_argument("--pop", type=int, default=24)
     ap.add_argument("--sigma", type=float, default=0.3); ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--out", default="warp_best"); a = ap.parse_args()
+    ap.add_argument("--x0", default=None); ap.add_argument("--out", default="warp_best"); a = ap.parse_args()
     init(a.jumper, a.kp)
-    x0 = np.r_[np.ones(3), np.zeros(len(S._G) * K)]
+    x0 = np.load(a.x0) if a.x0 else np.r_[np.ones(3), np.zeros(len(S._G) * K)]
     sig = np.r_[np.full(3, 0.5), np.ones(len(S._G) * K)] * a.sigma
     es = cma.CMAEvolutionStrategy(x0, 1.0, {"popsize": a.pop, "seed": a.seed, "CMA_stds": list(sig), "verbose": -9})
     t0 = time.time()
