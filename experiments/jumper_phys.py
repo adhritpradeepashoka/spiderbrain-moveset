@@ -40,6 +40,7 @@ class JumperPhys:
         self.floor = {i for i in range(self.m.ngeom) if self.m.geom_bodyid[i] == 0}
         self.base_body = self.m.body("base_link").id if self._has_body("base_link") else 1
         self.rec_hz = self.meta["rec_hz"]
+        self.cmd_hz = self.meta["control_hz"]   # q_cmd is sampled at the controller rate (200 Hz), not the 250 Hz recording rate
 
     def _has_body(self, n):
         try:
@@ -73,9 +74,9 @@ class JumperPhys:
         self.reset()
         d = self.d
         N = len(qcmd)
-        T = N / self.rec_hz + hold_s
+        T = N / self.cmd_hz + hold_s
         steps = int(T / self.dt)
-        times = np.arange(N) / self.rec_hz
+        times = np.arange(N) / self.cmd_hz
         base0 = d.qpos[:3].copy()
         # heading of the base at start (yaw) to express distance along the initial forward axis
         w, x, y, z = d.qpos[3:7]
