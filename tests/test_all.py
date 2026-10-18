@@ -68,8 +68,13 @@ def test_bridge_pounce_gate(cfg):
     pad = BrainPad(cfg["movesets"])
     pad.update({"pounce": True}, 0.02, distance_m=2.0)
     assert not pad.state().A
-    pad.update({"pounce": True}, 0.02, distance_m=0.2, fovea_contrast=0.5)
-    assert pad.state().A
+    pad.update({"pounce": True, "forward": 1.0}, 0.02, distance_m=0.2, fovea_contrast=0.5)
+    assert not pad.state().A and pad.state().ly == 0          # freezes first, does not walk into the jump
+    pressed = False
+    for _ in range(int(1.2 / 0.02)):                           # ...then presses A once settled
+        pad.update({"pounce": True, "forward": 1.0}, 0.02, distance_m=0.2, fovea_contrast=0.5)
+        pressed |= pad.state().A
+    assert pressed
 
 
 def test_bridge_forward_is_negative_ly(cfg):

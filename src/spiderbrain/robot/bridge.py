@@ -38,7 +38,7 @@ class BrainPad:
 
     connected = True
 
-    def __init__(self, movesets_cfg: dict, jump_cooldown_s=3.0):
+    def __init__(self, movesets_cfg: dict, jump_cooldown_s=8.0, settle_s=0.8, hold_s=2.2):
         self.cfg = movesets_cfg
         self.cmd = {"turn_ccw": 0.0, "forward": 0.0, "pounce": False}
         self.gate_ok = True
@@ -46,6 +46,10 @@ class BrainPad:
         self._t = 0.0
         self.cooldown = jump_cooldown_s
         self._jump_pulse = 0
+        # Stalk -> freeze -> pounce -> hold. Jumper's jump runs by itself once its mode is entered, so the pad must be
+        # STILL when A is pressed (a walking robot ignores or fumbles it) and must stay still while the jump plays.
+        self.settle_s, self.hold_s = settle_s, hold_s
+        self._phase, self._phase_t = "stalk", 0.0
 
     def update(self, cmd: dict, dt: float, distance_m=None, fovea_contrast=None):
         self._t += dt
@@ -57,9 +61,18 @@ class BrainPad:
         if fovea_contrast is not None:
             ok &= fovea_contrast >= g["require_fovea_contrast"]
         self.gate_ok = bool(ok)
-        if cmd.get("pounce") and ok and self._t - self._last_jump > self.cooldown:
-            self._last_jump = self._t
-            self._jump_pulse = max(int(0.15 / max(dt, 1e-3)), 1)
+        self._phase_t += dt
+        if self._phase == "stalk":
+            if cmd.get("pounce") and ok and self._t - self._last_jump > self.cooldown:
+                self._phase, self._phase_t = "settle", 0.0          # freeze first
+        elif self._phase == "settle":
+            if self._phase_t >= self.settle_s:
+                self._last_jump = self._t
+                self._jump_pulse = max(int(0.15 / max(dt, 1e-3)), 1)
+                self._phase, self._phase_t = "hold", 0.0
+        elif self._phase == "hold":
+            if self._phase_t >= self.hold_s:
+                self._phase, self._phase_t = "stalk", 0.0
 
     def state(self) -> PadState:
         ax = self.cfg["pad_axes"]
@@ -69,6 +82,8 @@ class BrainPad:
             self._jump_pulse -= 1
         turn = float(max(-1, min(1, self.cmd.get("turn_ccw", 0.0))))
         fwd = float(max(0, min(1, self.cmd.get("forward", 0.0))))
+        if self._phase != "stalk":                  # frozen while settling, jumping and landing
+            turn, fwd = 0.0, 0.0
         # the turn lives in the SECOND half of right-stick travel (0.5..1.0) for a given direction
         rx = 0.0
         if abs(turn) > 0.05:
