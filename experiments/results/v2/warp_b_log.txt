@@ -1,0 +1,8 @@
+gen   0 best +0.042 speeds [1.69 1.   0.81] (8s)
+gen   5 best +0.058 speeds [1.7  0.74 0.71] (43s)
+gen  10 best +0.059 speeds [1.8  0.74 0.76] (75s)
+gen  15 best +0.059 speeds [1.62 0.88 0.78] (111s)
+gen  20 best +0.059 speeds [1.62 0.88 0.78] (142s)
+gen  25 best +0.059 speeds [1.62 0.88 0.78] (172s)
+gen  30 best +0.066 speeds [1.58 0.93 0.85] (206s)
+gen  35 best +0.066 speeds [1.58 0.93 0.85] (240s)
