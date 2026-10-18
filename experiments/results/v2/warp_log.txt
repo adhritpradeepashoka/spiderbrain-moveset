@@ -1,0 +1,2 @@
+gen   0 best -0.000 speeds [1.03 0.94 1.32] (7s)
+gen   5 best +0.009 speeds [0.86 1.02 1.35] (39s)
