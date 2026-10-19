@@ -211,8 +211,10 @@ def main():
             iyaw = (yaw - self._yaw0 + math.pi) % (2 * math.pi) - math.pi
             pose = (ix, iy, iyaw)
             jr = getattr(self, "jump_results", [])
-            landed = len(jr) > self._njumps
+            if len(jr) > self._njumps:
+                self._landed_pending = True          # latched: the percept below only runs every few control ticks
             self._njumps = len(jr)
+            landed = getattr(self, "_landed_pending", False)
             w = self._world.step(s, dt, pose, caught=self._caught)
             self._caught = False
             if a.prey_entity and not a.no_puppet:
@@ -228,13 +230,16 @@ def main():
                 pc = Percept(t=s, stress=w.stress, friction=grip, jump_ready=(pad.phase == "stalk"), mate_receptive=w.mate_receptive)
                 if visible and w.role == "prey":
                     pc.prey_dist, pc.prey_bearing = dist, bearing
-                    pc.prey_caught = landed and dist < 0.30
                 elif visible and w.role == "threat":
                     pc.threat_dist, pc.threat_bearing, pc.threat_theta = dist, bearing, angular_size(dist)
                 elif visible and w.role == "mate":
                     pc.mate_dist, pc.mate_bearing = dist, bearing
-                if pc.prey_caught:
-                    self._caught = True
+                # A catch is judged on landing whether or not the prey is still in view (a lunge can carry the crab past it).
+                if landed:
+                    self._landed_pending = False
+                    if w.role == "prey" and dist < 0.30:
+                        pc.prey_caught = True
+                        self._caught = True
                 # the spider brain only ever sees prey; threats and mates are the agent's business
                 frame = render_prey_frame(bearing + math.radians(a.fidget_deg) * math.sin(self._t / 5.0), dist, size_m=0.11) if (visible and w.role == "prey") else np.zeros((120, 160, 3), np.float32)
                 _, self.last_cmd = self._bc.tick(frame, depth_m=dist, fovea_contrast=1.0 if abs(bearing) < 0.4 else 0.0)
