@@ -29,14 +29,19 @@ RATE_HZ = 200.0             # the recording's command rate; the jump mode runs a
 
 
 def biased_commands(q_cmd: np.ndarray, joint_names: list[str], params: dict | None = None, scale: float = 1.0) -> np.ndarray:
-    """(T, n_joints) commands: the recording's, plus `scale` x the bias. `scale=0` returns the stock jump."""
+    """(T, n_joints) commands: the recording's, plus `scale` x the bias. `scale=0` returns the stock jump.
+
+    `params` is either {"amp": [...6], "centre_s", "width_s"} (the original layout over LEFT/RIGHT) or
+    {"pairs": [[left, right, mirror_sign, amp], ...], "centre_s", "width_s"} (configs/directional_jump_v3.json).
+    """
     p = {**DEFAULT_PARAMS, **(params or {})}
+    pairs = p.get("pairs") or [[l, r, m, a] for l, r, m, a in zip(LEFT, RIGHT, MIRROR, p["amp"])]
     t = np.arange(len(q_cmd)) / RATE_HZ
     bump = np.exp(-0.5 * ((t - p["centre_s"]) / p["width_s"]) ** 2)
     out = np.array(q_cmd, dtype=float, copy=True)
-    for k, (l, r) in enumerate(zip(LEFT, RIGHT)):
-        out[:, joint_names.index(l)] += scale * p["amp"][k] * bump
-        out[:, joint_names.index(r)] += scale * MIRROR[k] * p["amp"][k] * bump
+    for l, r, m, a in pairs:
+        out[:, joint_names.index(l)] += scale * a * bump
+        out[:, joint_names.index(r)] += scale * m * a * bump
     return out
 
 

@@ -21,6 +21,6 @@ echo SETUP_DONE
 export MUJOCO_GL=egl
 # knobs: STEPS (200 Hz ticks), STYLE (directional|stock), JSCALE (0 = stock commands replayed open-loop), SCENE, TAG (output suffix)
 STEPS=${STEPS:-4000}; STYLE=${STYLE:-directional}; JSCALE=${JSCALE:-1.0}; SCENE=${SCENE:-football}; TAG=${TAG:-}
-(cd $SB && $J/.venv/bin/python scripts/play_with_brain.py --jumper $J --seed 0 --prey-entity ball --jump-style $STYLE --jump-scale $JSCALE \
+(cd $SB && $J/.venv/bin/python scripts/play_with_brain.py --jumper $J --seed 0 --prey-entity ball --jump-style $STYLE --jump-scale $JSCALE ${JPARAMS:+--jump-params $JPARAMS} \
   --log $W/dj$TAG.csv -- --app out/bundle_example/jumper.app --scene $SCENE --headless --steps $STEPS --video $W/dj$TAG.mp4) > $W/dj$TAG.log 2>&1
 echo RUN_DONE rc=$?

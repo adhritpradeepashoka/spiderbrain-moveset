@@ -64,6 +64,7 @@ def main():
     ap.add_argument("--fidget-deg", type=float, default=3.0, help="apparent prey jitter (lateral eyes are motion detectors)")
     ap.add_argument("--jump-style", choices=["stock", "directional"], default="stock",
                     help="stock: press A, Jumper's own vertical jump. directional: our forward-biased jump drives the joints")
+    ap.add_argument("--jump-params", type=Path, default=None, help="JSON bias (e.g. configs/directional_jump_v3.json); default = the built-in one")
     ap.add_argument("--jump-scale", type=float, default=1.0, help="0 = the stock jump's commands replayed open-loop, 1 = full forward bias")
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
@@ -98,7 +99,7 @@ def main():
                 from spiderbrain.robot.directional_jump import DirectionalJump
                 man = _json.loads((app.root / "bundle.json").read_text("utf-8"))
                 traj = _json.loads((app.root / man["modes"]["jump"]["trajectory"]).read_text("utf-8"))
-                self._dj = DirectionalJump(np.asarray(traj["q_cmd"]), traj["joint_order"], scale=a.jump_scale)
+                self._dj = DirectionalJump(np.asarray(traj["q_cmd"]), traj["joint_order"], params=(_json.loads(a.jump_params.read_text()) if a.jump_params else None), scale=a.jump_scale)
                 print(f"[spiderbrain] directional jump armed: {len(traj['q_cmd'])} commands, scale {a.jump_scale}", flush=True)
             print(f"[spiderbrain] Jumper control rate {app.control_hz:g} Hz; brain ticks every {self._bc.every} control steps", flush=True)
             self.rows = []

@@ -1,0 +1,67 @@
+{
+ "note": "ES search on CPU MuJoCo at 5 ms physics step with Jumper's torque-speed curve + thermal derating; CPU model predicted 0.357 m. NOT yet verified in Jumper's own simulator.",
+ "centre_s": 0.7278736879303263,
+ "width_s": 0.06985220231812603,
+ "pairs": [
+  [
+   "LR_J0_joint",
+   "RR_J0_joint",
+   -1,
+   -0.3399
+  ],
+  [
+   "LR_J1_joint",
+   "RR_J1_joint",
+   -1,
+   0.0275
+  ],
+  [
+   "LR_J2_joint",
+   "RR_J2_joint",
+   -1,
+   0.0738
+  ],
+  [
+   "LM_J0_joint",
+   "RM_J0_joint",
+   -1,
+   0.6407
+  ],
+  [
+   "LM_J1_joint",
+   "RM_J1_joint",
+   -1,
+   -0.871
+  ],
+  [
+   "LM_J2_joint",
+   "RM_J2_joint",
+   -1,
+   0.0069
+  ],
+  [
+   "LF_J0_joint",
+   "RF_J0_joint",
+   -1,
+   0.034
+  ],
+  [
+   "LF_J1_joint",
+   "RF_J1_joint",
+   1,
+   -0.8817
+  ],
+  [
+   "LF_J2_joint",
+   "RF_J2_joint",
+   -1,
+   -0.088
+  ],
+  [
+   "LF_J3_joint",
+   "RF_J3_joint",
+   -1,
+   -0.0612
+  ]
+ ]
+}
