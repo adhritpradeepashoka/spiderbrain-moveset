@@ -19,6 +19,21 @@ hip / knee, front-arm shoulder pitch - turns the same motion into a forward leap
 
 Sideways drift < 1 cm and final tilt < 0.5 deg in all rows. All commands stay inside the joint limits.
 
+## Verified in Jumper's own simulator (football scene, 1100 steps, kp 20 / kd 0.5, jump policy replaced by recorded commands + bias)
+Forward = along the robot's heading at take-off; peak z is the body-centre height (start 0.105 m).
+
+| config | forward | sideways | peak z | landing |
+|---|---|---|---|---|
+| stock commands replayed (no policy) | -2.5 cm | - | - | - |
+| first bias (above) | +5.5 cm | <= 1.3 cm | - | upright |
+| v3 (`configs/directional_jump_v3.json`, body height not constrained) | +14.6 cm | 7.1 cm | not logged (CPU model: ~8 cm rise) | upright (z 0.092) |
+| v4a (`configs/directional_jump_v4a.json`, search required >=0.14 m rise) | **+38.7 cm** | 10.4 cm | 0.219 m | upright (z 0.094) |
+| **v4c** (`configs/directional_jump_v4c.json`, rise >= 0.22 requested) | **+37.8 cm** | **1.7 cm** | 0.173 m | upright (z 0.091) |
+
+v3 was a low dive: the search had rewarded distance and body height was not required. Requiring the rise fixed it. With the
+rise constraint the CPU model (0.40-0.44 m) and Jumper's sim agree to within ~10%, so the earlier 2.4x over-prediction does not
+carry over to these parameters. v4c is the default for `--jump-style directional`. One run per config, not repeated.
+
 ## Caveats (read these before claiming anything)
 - Different simulator from Jumper's (no torque-speed curve; own floor). One search, one reference motion.
 - Slippery floors defeat it: with every geom's friction capped at 0.4 the forward travel drops to 4-6 cm. Fits the ice result

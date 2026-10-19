@@ -64,11 +64,13 @@ def main():
     ap.add_argument("--fidget-deg", type=float, default=3.0, help="apparent prey jitter (lateral eyes are motion detectors)")
     ap.add_argument("--jump-style", choices=["stock", "directional"], default="stock",
                     help="stock: press A, Jumper's own vertical jump. directional: our forward-biased jump drives the joints")
-    ap.add_argument("--jump-params", type=Path, default=None, help="JSON bias (e.g. configs/directional_jump_v3.json); default = the built-in one")
+    ap.add_argument("--jump-params", type=Path, default=None, help="JSON bias (e.g. configs/directional_jump_v3.json); default for --jump-style directional = configs/directional_jump_v4c.json")
     ap.add_argument("--jump-scale", type=float, default=1.0, help="0 = the stock jump's commands replayed open-loop, 1 = full forward bias")
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
+    if a.jump_params is None and a.jump_style == "directional":
+        a.jump_params = Path(__file__).resolve().parent.parent / "configs" / "directional_jump_v4c.json"   # best verified in Jumper's sim
     if a.jump_params:
         a.jump_params = a.jump_params.resolve()      # the script chdirs into the Jumper checkout later
     _bootstrap()
