@@ -218,7 +218,9 @@ def main():
             if a.prey_entity and not a.no_puppet:
                 self._place_prey(u, self._x0 + w.ball[0] * c0 - w.ball[1] * s0, self._y0 + w.ball[0] * s0 + w.ball[1] * c0)
             dist, bearing = bearing_to(pose, w.ball)
-            visible = w.role != "none" and abs(bearing) < math.radians(65) and dist < 3.0
+            lim = math.radians(85 if getattr(self, "_vis", False) else 65)          # hysteresis: no flicker at the edge of the view
+            visible = w.role != "none" and abs(bearing) < lim and dist < 3.0
+            self._vis = visible
             pad = self._bc.pad
             if self._t % self._bc.every == 0:
                 walking_ok = pad.phase == "stalk" and pad._h_move is None

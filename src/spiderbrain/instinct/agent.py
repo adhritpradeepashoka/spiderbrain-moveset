@@ -85,6 +85,9 @@ class SurvivalAgent:
     LOOM_THRESH = 0.12          # score at which the escape reflex fires (shy crabs lower it)
     TUN_STRESS = 0.7            # stress above this long enough -> shutdown
     REVIVE_STRESS = 0.35
+    TURN_GAIN, TURN_CAP = 0.3, 0.3        # scale the readout's turn to Jumper's turn rate
+    STALK_FAR, STALK_NEAR = 0.5, 0.3      # forward command caps while stalking
+    PREY_MEMORY_S = 1.2                   # keep hunting this long after the prey leaves the field of view
 
     def __init__(self, personality: Personality | None = None, viability_rate=None):
         self.p = personality or Personality()
@@ -105,6 +108,7 @@ class SurvivalAgent:
         self._viability_rate = viability_rate or (lambda stress, tun: -0.05 * stress * (0.05 if tun else 1.0) + 0.01 * (1 - stress) * (0.0 if tun else 1.0))
         self.events: list[tuple[float, str]] = []
         self.last_loom = 0.0
+        self._prey_seen_t, self._last_prey_bearing, self._aligned_t = -1e9, 0.0, 0.0
 
     # ------------------------------------------------------------------ helpers
     def _enter(self, state: str, t: float, why: str = ""):
@@ -211,16 +215,33 @@ class SurvivalAgent:
             self.events.append((round(pc.t, 2), "caught prey: +energy"))
         # --- hunt
         hungry = self.energy < 0.7
-        if pc.prey_dist is not None and hungry and (self.p.boldness > 0.2):
-            self._enter("hunt", pc.t, f"energy {self.energy:.2f}, prey in view")
+        if pc.prey_dist is not None:
+            self._prey_seen_t, self._last_prey_bearing = pc.t, pc.prey_bearing
+        lost_for = pc.t - self._prey_seen_t
+        if (pc.prey_dist is not None or (self.state == "hunt" and lost_for < self.PREY_MEMORY_S)) and hungry and (self.p.boldness > 0.2):
+            self._enter("hunt", pc.t, f"energy {self.energy:.2f}, prey in view" if pc.prey_dist is not None else "prey just out of view: turn back")
             cmd = brain_cmd or {}
-            return Intent(turn_ccw=cmd.get("turn_ccw", 0.0), forward=cmd.get("forward", 0.0) * scale, pounce=bool(cmd.get("pounce")) and not slick,
-                          state="hunt", why="stalk -> freeze -> pounce (brain)", speed_scale=scale, crouch=crouch)
+            # The brain's readout was tuned on a mock arena; Jumper turns far faster per unit of command (about 250 deg/s per 1.0),
+            # so its steering is scaled down (TURN_GAIN) and the approach speed is capped so the crab does not overshoot the prey.
+            if pc.prey_dist is None:                    # prey slipped out of view: turn back toward where it was last seen
+                return Intent(turn_ccw=max(-0.2, min(0.2, 0.6 * self._last_prey_bearing)), state="hunt", why="prey just out of view: turn back", speed_scale=scale, crouch=crouch)
+            turn = max(-self.TURN_CAP, min(self.TURN_CAP, self.TURN_GAIN * cmd.get("turn_ccw", 0.0)))
+            fwd = cmd.get("forward", 0.0) * scale
+            cap = self.STALK_FAR if pc.prey_dist > 0.8 else self.STALK_NEAR
+            fwd = min(fwd, cap) if abs(pc.prey_bearing) < 0.35 else 0.0      # reorient first, then advance (spiders do both)
+            pounce = bool(cmd.get("pounce"))
+            if not pounce and pc.prey_dist < 0.40 and abs(pc.prey_bearing) < 0.2:      # in range and square-on: the documented distance gate
+                self._aligned_t += dt
+                pounce = self._aligned_t > 0.4
+            else:
+                self._aligned_t = 0.0 if not pounce else self._aligned_t
+            return Intent(turn_ccw=turn, forward=fwd, pounce=pounce and not slick,
+                          state="hunt", why="stalk -> freeze -> pounce", speed_scale=scale, crouch=crouch)
         if self.state == "hunt":
             self._enter("wander", pc.t, "prey lost")
         # --- wander
         self._enter("wander", pc.t, "")
-        return Intent(turn_ccw=0.25 * math.sin(pc.t * 0.35), forward=0.5 * scale, state="wander", why="explore", speed_scale=scale, crouch=crouch)
+        return Intent(turn_ccw=0.12 * math.sin(pc.t * 0.35), forward=0.45 * scale, state="wander", why="explore", speed_scale=scale, crouch=crouch)
 
 
 class FrictionEstimator:
