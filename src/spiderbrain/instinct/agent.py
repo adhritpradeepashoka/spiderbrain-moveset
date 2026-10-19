@@ -104,6 +104,7 @@ class SurvivalAgent:
         self._last_court = -1e9
         self._viability_rate = viability_rate or (lambda stress, tun: -0.05 * stress * (0.05 if tun else 1.0) + 0.01 * (1 - stress) * (0.0 if tun else 1.0))
         self.events: list[tuple[float, str]] = []
+        self.last_loom = 0.0
 
     # ------------------------------------------------------------------ helpers
     def _enter(self, state: str, t: float, why: str = ""):
@@ -133,6 +134,7 @@ class SurvivalAgent:
         else:
             self._theta = []
         loom = looming_signal(self._theta)
+        self.last_loom = loom
         thresh = self.LOOM_THRESH * (1.5 - 0.8 * self.p.boldness)
         # a threat that is simply close also frightens, scaled by boldness (not a reflex, a startle)
         close = pc.threat_dist is not None and pc.threat_dist < 0.25 * (1.4 - self.p.boldness)

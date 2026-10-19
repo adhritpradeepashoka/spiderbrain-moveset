@@ -66,6 +66,9 @@ def main():
                     help="stock: press A, Jumper's own vertical jump. directional: our forward-biased jump drives the joints")
     ap.add_argument("--jump-params", type=Path, default=None, help="JSON bias (e.g. configs/directional_jump_v3.json); default for --jump-style directional = configs/directional_jump_v4c.json")
     ap.add_argument("--jump-scale", type=float, default=1.0, help="0 = the stock jump's commands replayed open-loop, 1 = full forward bias")
+    ap.add_argument("--instinct", choices=["hunt", "threat", "tun", "court", "ice"], default=None,
+                    help="run the survival-crab agent in this scripted scenario (hunt/threat/tun/court need the football scene's ball)")
+    ap.add_argument("--instinct-log", default="instinct_log.csv", help="per-tick CSV of the agent's state and drives (for the HUD overlay)")
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
@@ -92,7 +95,7 @@ def main():
 
     class BrainAppPlayer(Orig):
         def __init__(self, app, env, *, pad=None):
-            self._bc = BrainController(conn, cfg, control_hz=app.control_hz, brain_hz=50.0, readout=readout, gaze_follow=False)
+            self._bc = BrainController(conn, cfg, control_hz=app.control_hz, brain_hz=50.0, readout=readout, gaze_follow=False, drive_pad=not a.instinct)
             super().__init__(app, env, pad=self._bc.pad)       # BrainPad has state() and connected
             self._env_ref, self._t, self._hz, self.last_cmd = env, 0, app.control_hz, {}
             self._pounces = 0
@@ -106,12 +109,25 @@ def main():
                 self._dj = DirectionalJump(np.asarray(traj["q_cmd"]), traj["joint_order"], params=(_json.loads(a.jump_params.read_text()) if a.jump_params else None), scale=a.jump_scale)
                 print(f"[spiderbrain] directional jump armed: {len(traj['q_cmd'])} commands, scale {a.jump_scale}", flush=True)
             print(f"[spiderbrain] Jumper control rate {app.control_hz:g} Hz; brain ticks every {self._bc.every} control steps", flush=True)
-            self.rows = []
+            self.rows, self.irows = [], []
+            if a.instinct:
+                from spiderbrain.instinct.agent import FrictionEstimator
+                from spiderbrain.instinct.scenarios import World, make_agent
+                self._agent, self._world, self._fric = make_agent(a.instinct, a.seed), World(a.instinct, a.seed), FrictionEstimator()
+                self._intent, self._caught, self._njumps, self._padcmd = None, False, 0, {"turn_ccw": 0.0, "forward": 0.0, "pounce": False}
+                print(f"[spiderbrain] INSTINCT scenario '{a.instinct}', personality {self._agent.p}", flush=True)
             import atexit
             atexit.register(self._flush)
 
         def _flush(self):
             import csv
+            if self.irows:
+                with open(a.instinct_log, "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(["t_s", "state", "why", "energy", "fear", "mate", "viability", "shadow", "metabolism", "stress", "grip", "role", "ball_x", "ball_y",
+                                "robot_x", "robot_y", "yaw_deg", "pad_phase", "loom", "crouched", "prey_dist", "threat_dist", "mate_dist"])
+                    w.writerows(self.irows)
+                print(f"[spiderbrain] wrote {len(self.irows)} instinct ticks to {a.instinct_log}; events: {self._agent.events}", flush=True)
             if not self.rows:
                 return
             with open(a.log, "w", newline="") as f:
@@ -177,7 +193,70 @@ def main():
             st = torch.tensor([[x, y, z, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
             ball.write_root_state_to_sim(st)
 
+        def _person_instinct(self, now_us):
+            """Survival-crab mode: scenario world -> percepts -> SurvivalAgent -> pad. The spider brain still runs and supplies the hunt."""
+            from spiderbrain.instinct.agent import Percept
+            from spiderbrain.instinct.scenarios import angular_size, bearing_to
+            u = self._env_ref.unwrapped
+            s = self._t / self._hz
+            dt = 1.0 / self._hz
+            robot = u.scene["robot"]
+            rx_, ry_ = [float(v) for v in robot.data.root_link_pos_w[0][:2]]
+            yaw = yaw_from_quat_wxyz(robot.data.root_link_quat_w[0])
+            if self._t == 0:
+                self._x0, self._y0, self._yaw0 = rx_, ry_, yaw
+                print(f"[spiderbrain] robot starts at ({rx_:.2f},{ry_:.2f}) facing {math.degrees(yaw):+.0f} deg", flush=True)
+            c0, s0 = math.cos(self._yaw0), math.sin(self._yaw0)
+            ix, iy = (rx_ - self._x0) * c0 + (ry_ - self._y0) * s0, -(rx_ - self._x0) * s0 + (ry_ - self._y0) * c0
+            iyaw = (yaw - self._yaw0 + math.pi) % (2 * math.pi) - math.pi
+            pose = (ix, iy, iyaw)
+            jr = getattr(self, "jump_results", [])
+            landed = len(jr) > self._njumps
+            self._njumps = len(jr)
+            w = self._world.step(s, dt, pose, caught=self._caught)
+            self._caught = False
+            if a.prey_entity and not a.no_puppet:
+                self._place_prey(u, self._x0 + w.ball[0] * c0 - w.ball[1] * s0, self._y0 + w.ball[0] * s0 + w.ball[1] * c0)
+            dist, bearing = bearing_to(pose, w.ball)
+            visible = w.role != "none" and abs(bearing) < math.radians(65) and dist < 3.0
+            pad = self._bc.pad
+            if self._t % self._bc.every == 0:
+                walking_ok = pad.phase == "stalk" and pad._h_move is None
+                grip = self._fric.update(s, rx_, ry_, float(self._padcmd.get("forward", 0.0)), walking_ok)
+                pc = Percept(t=s, stress=w.stress, friction=grip, jump_ready=(pad.phase == "stalk"), mate_receptive=w.mate_receptive)
+                if visible and w.role == "prey":
+                    pc.prey_dist, pc.prey_bearing = dist, bearing
+                    pc.prey_caught = landed and dist < 0.30
+                elif visible and w.role == "threat":
+                    pc.threat_dist, pc.threat_bearing, pc.threat_theta = dist, bearing, angular_size(dist)
+                elif visible and w.role == "mate":
+                    pc.mate_dist, pc.mate_bearing = dist, bearing
+                if pc.prey_caught:
+                    self._caught = True
+                # the spider brain only ever sees prey; threats and mates are the agent's business
+                frame = render_prey_frame(bearing + math.radians(a.fidget_deg) * math.sin(self._t / 5.0), dist, size_m=0.11) if (visible and w.role == "prey") else np.zeros((120, 160, 3), np.float32)
+                _, self.last_cmd = self._bc.tick(frame, depth_m=dist, fovea_contrast=1.0 if abs(bearing) < 0.4 else 0.0)
+                i = self._agent.tick(pc, self._bc.every / self._hz, brain_cmd=self.last_cmd, pad_phase=pad.phase)
+                self._intent = i
+                self._padcmd = {"turn_ccw": i.turn_ccw, "forward": i.forward * i.speed_scale, "strafe_left": i.strafe_left, "pounce": i.pounce,
+                                "escape": i.state == "flee_jump", "crouch": i.crouch, "gesture": i.gesture}
+                self._gate = (dist if (visible and w.role == "prey") else None, 1.0 if abs(bearing) < 0.4 else 0.0)
+                d = self._agent.drives()
+                self.irows.append((round(s, 3), i.state, i.why, d["energy"], d["fear"], d["mate"], d["viability"], d["shadow"], d["metabolism"],
+                                   round(w.stress, 3), round(grip, 3), w.role, round(w.ball[0], 3), round(w.ball[1], 3), round(ix, 3), round(iy, 3),
+                                   round(math.degrees(iyaw), 1), pad.phase, round(self._agent.last_loom, 3), int(pad.crouched),
+                                   round(pc.prey_dist, 3) if pc.prey_dist is not None else "", round(pc.threat_dist, 3) if pc.threat_dist is not None else "",
+                                   round(pc.mate_dist, 3) if pc.mate_dist is not None else ""))
+                if self._t % int(self._hz) == 0:
+                    print(f"[spiderbrain] t={s:5.1f}s {i.state:10s} {i.why[:44]:44s} E={d['energy']:.2f} F={d['fear']:.2f} V={d['viability']:.2f} grip={grip:.2f} phase={pad.phase}", flush=True)
+            dist_g, fov_g = getattr(self, "_gate", (None, None))
+            pad.update(self._padcmd, dt, distance_m=dist_g, fovea_contrast=fov_g)
+            self._t += 1
+            return super()._person(now_us)
+
         def _person(self, now_us):
+            if a.instinct:
+                return self._person_instinct(now_us)
             u = self._env_ref.unwrapped
             s = self._t / self._hz
             robot = u.scene["robot"]
