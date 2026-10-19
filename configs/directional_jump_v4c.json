@@ -1,0 +1,67 @@
+{
+ "note": "v4c: ES on CPU MuJoCo with a rise requirement (rise>=0.22); CPU model over-predicts forward distance ~2.4x. Verify in Jumper's sim.",
+ "centre_s": 0.7030130037054497,
+ "width_s": 0.043958782666488457,
+ "pairs": [
+  [
+   "LR_J0_joint",
+   "RR_J0_joint",
+   -1,
+   -0.1638
+  ],
+  [
+   "LR_J1_joint",
+   "RR_J1_joint",
+   -1,
+   0.5779
+  ],
+  [
+   "LR_J2_joint",
+   "RR_J2_joint",
+   -1,
+   0.2497
+  ],
+  [
+   "LM_J0_joint",
+   "RM_J0_joint",
+   -1,
+   0.8792
+  ],
+  [
+   "LM_J1_joint",
+   "RM_J1_joint",
+   -1,
+   -0.9
+  ],
+  [
+   "LM_J2_joint",
+   "RM_J2_joint",
+   -1,
+   0.1691
+  ],
+  [
+   "LF_J0_joint",
+   "RF_J0_joint",
+   -1,
+   -0.3806
+  ],
+  [
+   "LF_J1_joint",
+   "RF_J1_joint",
+   1,
+   -0.8335
+  ],
+  [
+   "LF_J2_joint",
+   "RF_J2_joint",
+   -1,
+   0.1749
+  ],
+  [
+   "LF_J3_joint",
+   "RF_J3_joint",
+   -1,
+   0.0152
+  ]
+ ]
+}

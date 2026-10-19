@@ -137,6 +137,8 @@ def main():
                 self._dj.start(now_s, cur)
                 self._dj_start = [float(v) for v in data.root_link_pos_w[0][:3]] + [yaw_from_quat_wxyz(data.root_link_quat_w[0])]
                 print(f"\n[spiderbrain] t={now_s:.2f}s DIRECTIONAL JUMP start at ({self._dj_start[0]:.2f},{self._dj_start[1]:.2f})", flush=True)
+            if self._dj_start is not None:
+                self._dj_zmax = max(getattr(self, "_dj_zmax", 0.0) if self._dj.active else 0.0, float(data.root_link_pos_w[0][2]))
             tgt = self._dj.target(now_s)
             if tgt is None:
                 if self._dj_start is not None:
@@ -144,7 +146,7 @@ def main():
                     ddx, ddy = p[0] - self._dj_start[0], p[1] - self._dj_start[1]
                     fwd = ddx * math.cos(self._dj_start[3]) + ddy * math.sin(self._dj_start[3])
                     side = -ddx * math.sin(self._dj_start[3]) + ddy * math.cos(self._dj_start[3])
-                    print(f"\n[spiderbrain] directional jump done: forward {fwd:+.3f} m, sideways {side:+.3f} m, z {p[2]:.3f}", flush=True)
+                    print(f"\n[spiderbrain] directional jump done: forward {fwd:+.3f} m, sideways {side:+.3f} m, z {p[2]:.3f}, peak z {getattr(self, '_dj_zmax', 0.0):.3f} (start z {self._dj_start[2]:.3f})", flush=True)
                     self.jump_results = getattr(self, "jump_results", []) + [(round(now_s, 2), round(fwd, 3), round(side, 3))]
                     self._dj_start = None
                 return
