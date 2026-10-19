@@ -38,7 +38,7 @@ class BrainPad:
 
     connected = True
 
-    def __init__(self, movesets_cfg: dict, jump_cooldown_s=8.0, settle_s=0.8, hold_s=2.2):
+    def __init__(self, movesets_cfg: dict, jump_cooldown_s=8.0, settle_s=0.8, hold_s=2.2, jump_style="stock"):
         self.cfg = movesets_cfg
         self.cmd = {"turn_ccw": 0.0, "forward": 0.0, "pounce": False}
         self.gate_ok = True
@@ -50,6 +50,10 @@ class BrainPad:
         # STILL when A is pressed (a walking robot ignores or fumbles it) and must stay still while the jump plays.
         self.settle_s, self.hold_s = settle_s, hold_s
         self._phase, self._phase_t = "stalk", 0.0
+        # "stock": press A, Jumper's own (vertical) jump runs. "directional": raise `jump_request` instead and let the
+        # player (scripts/play_with_brain.py) drive the joints with the forward-biased jump.
+        self.jump_style = jump_style
+        self.jump_request = False
 
     def update(self, cmd: dict, dt: float, distance_m=None, fovea_contrast=None):
         self._t += dt
@@ -68,7 +72,10 @@ class BrainPad:
         elif self._phase == "settle":
             if self._phase_t >= self.settle_s:
                 self._last_jump = self._t
-                self._jump_pulse = max(int(0.15 / max(dt, 1e-3)), 1)
+                if self.jump_style == "directional":
+                    self.jump_request = True
+                else:
+                    self._jump_pulse = max(int(0.15 / max(dt, 1e-3)), 1)
                 self._phase, self._phase_t = "hold", 0.0
         elif self._phase == "hold":
             if self._phase_t >= self.hold_s:

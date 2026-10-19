@@ -110,3 +110,30 @@ def test_search_finds_prey_behind(cfg):
     m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     _, pounce = m.run(seed=0, prey=(-0.3, 1.2), steps=1500, verbose=False)
     assert pounce is not None
+
+
+def test_directional_jump_commands():
+    import numpy as np
+    from spiderbrain.robot.directional_jump import biased_commands, DirectionalJump, LEFT, RIGHT, MIRROR
+    names = [f"{s}_J{i}_joint" for s in ("LF", "RF", "LM", "RM", "LR", "RR") for i in range(3)]
+    q = np.zeros((295, len(names)))
+    assert np.allclose(biased_commands(q, names, scale=0.0), q)            # scale 0 = the stock commands
+    b = biased_commands(q, names)
+    for l, r, m in zip(LEFT, RIGHT, MIRROR):                               # right side mirrors the left
+        assert np.allclose(b[:, names.index(r)], m * b[:, names.index(l)])
+    assert np.abs(b).max() > 0.1 and np.abs(b[:20]).max() < 1e-3          # bias only around the push-off
+    dj = DirectionalJump(q, names, blend_s=0.3)
+    assert dj.target(0.0) is None
+    dj.start(10.0, np.zeros(len(names)))
+    assert dj.target(10.1) is not None and dj.target(10.0 + dj.duration + 0.01) is None
+
+
+def test_bridge_directional_request():
+    from spiderbrain.config import load_config
+    from spiderbrain.robot.bridge import BrainPad
+    cfg = load_config()
+    pad = BrainPad(cfg["movesets"], jump_style="directional")
+    for _ in range(6):
+        pad.update({"turn_ccw": 0.0, "forward": 0.0, "pounce": True}, 0.25, distance_m=0.2, fovea_contrast=1.0)
+        assert not pad.state().A                                          # directional never presses A
+    assert pad.jump_request

@@ -1,4 +1,4 @@
-"""Run Jumper's own `play --app` with the spider brain holding the gamepad.   *** UNTESTED against a live Jumper ***
+"""Run Jumper's own `play --app` with the spider brain holding the gamepad.   (stock mode ran on a live Jumper sim; --jump-style directional is NEW, untested there)
 
     python scripts/play_with_brain.py --jumper /content/jumper --seed 0 --prey-entity ball -- \\
         --app out/bundle_example/jumper.app --scene football --headless --steps 1500 --video clip.mp4
@@ -11,6 +11,7 @@ Everything after `--` goes to Jumper's scripts/play.py unchanged. We patch mjrl.
 Third-party code (Jumper, Apache-2.0) is imported, not vendored. Read it before running it.
 """
 import argparse, math, os, runpy, sys
+import numpy as np
 from pathlib import Path
 
 
@@ -61,6 +62,9 @@ def main():
     ap.add_argument("--prey-start", type=float, nargs=2, default=(1.2, 0.5), help="prey start, metres from the robot's start")
     ap.add_argument("--no-puppet", action="store_true", help="do not move the prey entity; just read its position")
     ap.add_argument("--fidget-deg", type=float, default=3.0, help="apparent prey jitter (lateral eyes are motion detectors)")
+    ap.add_argument("--jump-style", choices=["stock", "directional"], default="stock",
+                    help="stock: press A, Jumper's own vertical jump. directional: our forward-biased jump drives the joints")
+    ap.add_argument("--jump-scale", type=float, default=1.0, help="0 = the stock jump's commands replayed open-loop, 1 = full forward bias")
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
@@ -87,6 +91,15 @@ def main():
             super().__init__(app, env, pad=self._bc.pad)       # BrainPad has state() and connected
             self._env_ref, self._t, self._hz, self.last_cmd = env, 0, app.control_hz, {}
             self._pounces = 0
+            self._bc.pad.jump_style = a.jump_style
+            self._dj, self._dj_start = None, None
+            if a.jump_style == "directional":
+                import json as _json
+                from spiderbrain.robot.directional_jump import DirectionalJump
+                man = _json.loads((app.root / "bundle.json").read_text("utf-8"))
+                traj = _json.loads((app.root / man["modes"]["jump"]["trajectory"]).read_text("utf-8"))
+                self._dj = DirectionalJump(np.asarray(traj["q_cmd"]), traj["joint_order"], scale=a.jump_scale)
+                print(f"[spiderbrain] directional jump armed: {len(traj['q_cmd'])} commands, scale {a.jump_scale}", flush=True)
             print(f"[spiderbrain] Jumper control rate {app.control_hz:g} Hz; brain ticks every {self._bc.every} control steps", flush=True)
             self.rows = []
             import atexit
@@ -101,6 +114,46 @@ def main():
                 w.writerow(["t_s", "dist_m", "bearing_deg", "turn_cmd", "fwd_cmd", "pounce_cmd", "gate_open", "robot_x", "robot_y", "prey_x", "prey_y", "yaw_deg", "search", "pad_ly", "pad_rx", "pad_A"])
                 w.writerows(self.rows)
             print(f"[spiderbrain] wrote {len(self.rows)} ticks to {a.log}; pounce commands with gate open: {self._pounces}", flush=True)
+
+        def __call__(self, obs):
+            out = super().__call__(obs)
+            if self._dj is not None:
+                self._drive_directional_jump()
+            return out
+
+        def _drive_directional_jump(self):
+            """After Jumper's controller has written its targets, overwrite them while our jump plays."""
+            import torch
+            now_s = (self._tick - 1) * self._step_us / 1e6
+            data = self._robot.data
+            if self._bc.pad.jump_request and not self._dj.active:
+                self._bc.pad.jump_request = False
+                wire = [list(self._robot.joint_names)[i] for i in self._wire_from_sim]
+                row = data.joint_pos[0]
+                cur = np.array([float(row[self._wire_from_sim[wire.index(nm)]]) for nm in self._dj.names])
+                self._dj.start(now_s, cur)
+                self._dj_start = [float(v) for v in data.root_link_pos_w[0][:3]] + [yaw_from_quat_wxyz(data.root_link_quat_w[0])]
+                print(f"\n[spiderbrain] t={now_s:.2f}s DIRECTIONAL JUMP start at ({self._dj_start[0]:.2f},{self._dj_start[1]:.2f})", flush=True)
+            tgt = self._dj.target(now_s)
+            if tgt is None:
+                if self._dj_start is not None:
+                    p = [float(v) for v in data.root_link_pos_w[0][:3]]
+                    ddx, ddy = p[0] - self._dj_start[0], p[1] - self._dj_start[1]
+                    fwd = ddx * math.cos(self._dj_start[3]) + ddy * math.sin(self._dj_start[3])
+                    side = -ddx * math.sin(self._dj_start[3]) + ddy * math.cos(self._dj_start[3])
+                    print(f"\n[spiderbrain] directional jump done: forward {fwd:+.3f} m, sideways {side:+.3f} m, z {p[2]:.3f}", flush=True)
+                    self.jump_results = getattr(self, "jump_results", []) + [(round(now_s, 2), round(fwd, 3), round(side, 3))]
+                    self._dj_start = None
+                return
+            from spiderbrain.robot.directional_jump import KP, KD
+            names = list(self._robot.joint_names)
+            wire = [names[i] for i in self._wire_from_sim]
+            vals = [float(tgt[self._dj.names.index(nm)]) for nm in wire]
+            n = self._env.unwrapped.num_envs
+            dev = self._env.unwrapped.device
+            self._targets[:, self._sim_ids] = torch.tensor(vals, device=dev).repeat(n, 1)
+            for act, idx in self._gains:
+                act.set_gains(slice(None), kp=torch.full((n, len(idx)), KP, device=dev), kd=torch.full((n, len(idx)), KD, device=dev))
 
         def _origin(self, u):
             try:
