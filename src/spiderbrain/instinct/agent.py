@@ -219,3 +219,32 @@ class SurvivalAgent:
         # --- wander
         self._enter("wander", pc.t, "")
         return Intent(turn_ccw=0.25 * math.sin(pc.t * 0.35), forward=0.5 * scale, state="wander", why="explore", speed_scale=scale, crouch=crouch)
+
+
+class FrictionEstimator:
+    """Proprioceptive slip sense: how much of the commanded walking speed actually happens?
+
+    ratio = measured speed / (commanded fraction x nominal speed). Plain floor ~1.0, ice ~0.4 in Jumper's sim (see
+    docs/floor-test-results.md). Maps to a 0..1 'grip' number; the agent treats < 0.4 as slippery. It needs a second or
+    so of walking before it has an opinion (until then it reports 1.0).
+    """
+
+    def __init__(self, nominal_speed=0.75, window_s=1.5):
+        self.v0, self.window = nominal_speed, window_s
+        self._hist: list[tuple[float, float, float, float]] = []   # t, x, y, commanded forward fraction
+        self.grip = 1.0
+
+    def update(self, t: float, x: float, y: float, cmd_forward: float, walking_ok: bool) -> float:
+        if not walking_ok or cmd_forward < 0.4:
+            self._hist = []
+            return self.grip
+        self._hist.append((t, x, y, cmd_forward))
+        while self._hist and t - self._hist[0][0] > self.window:
+            self._hist.pop(0)
+        if t - self._hist[0][0] >= self.window * 0.8:
+            t0, x0, y0, _ = self._hist[0]
+            speed = math.hypot(x - x0, y - y0) / max(t - t0, 1e-6)
+            exp = self.v0 * sum(h[3] for h in self._hist) / len(self._hist)
+            ratio = speed / max(exp, 1e-6)
+            self.grip = max(0.05, min(1.0, (ratio - 0.25) / 0.6))
+        return self.grip

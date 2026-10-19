@@ -13,8 +13,9 @@ from .bridge import BrainPad
 
 
 class BrainController:
-    def __init__(self, conn, cfg, control_hz=50.0, brain_hz=50.0, substeps=None, backend="auto", eye_gain=5.0, warmup_s=1.0, gaze_follow=True, readout=None, search_after_s=0.6, search_turn=0.5):
+    def __init__(self, conn, cfg, control_hz=50.0, brain_hz=50.0, substeps=None, backend="auto", eye_gain=5.0, warmup_s=1.0, gaze_follow=True, readout=None, search_after_s=0.6, search_turn=0.5, drive_pad=True):
         self.cfg, self.conn = cfg, conn
+        self.drive_pad = drive_pad          # False: the caller (e.g. the survival agent) updates the pad itself
         self.dt_ctrl = 1.0 / control_hz
         # The brain (and its readout) runs on its own 50 Hz clock whatever the robot's control rate is.
         # Jumper's controller runs ~200 Hz; stepping the eye's frame-difference at 200 Hz would shrink the motion signal 4x.
@@ -70,7 +71,8 @@ class BrainController:
             if self.gaze_follow:
                 self.eye.set_gaze(40.0 * self._cmd.get("scan_az", 0.0))
         self._n += 1
-        self.pad.update(self._cmd, self.dt_ctrl, distance_m=depth_m, fovea_contrast=fovea_contrast)
+        if self.drive_pad:
+            self.pad.update(self._cmd, self.dt_ctrl, distance_m=depth_m, fovea_contrast=fovea_contrast)
         return self.pad.state(), self._cmd
 
 

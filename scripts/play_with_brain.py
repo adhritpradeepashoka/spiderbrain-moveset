@@ -69,6 +69,8 @@ def main():
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
     ap.add_argument("rest", nargs=argparse.REMAINDER)
     a = ap.parse_args()
+    if a.jump_params:
+        a.jump_params = a.jump_params.resolve()      # the script chdirs into the Jumper checkout later
     _bootstrap()
     rest = [r for r in a.rest if r != "--"]
 
