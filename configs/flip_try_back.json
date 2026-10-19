@@ -1,0 +1,67 @@
+{
+ "note": "EXPERIMENT (back flip try): CPU search for pitch rotation. CPU model: rotates ~227 deg, does NOT complete a flip or land upright. Not verified in Jumper's sim.",
+ "centre_s": 0.8877886374193025,
+ "width_s": 0.11981744944654107,
+ "pairs": [
+  [
+   "LR_J0_joint",
+   "RR_J0_joint",
+   -1,
+   -1.564
+  ],
+  [
+   "LR_J1_joint",
+   "RR_J1_joint",
+   -1,
+   0.1179
+  ],
+  [
+   "LR_J2_joint",
+   "RR_J2_joint",
+   -1,
+   -0.3066
+  ],
+  [
+   "LM_J0_joint",
+   "RM_J0_joint",
+   -1,
+   0.2332
+  ],
+  [
+   "LM_J1_joint",
+   "RM_J1_joint",
+   -1,
+   -0.4098
+  ],
+  [
+   "LM_J2_joint",
+   "RM_J2_joint",
+   -1,
+   -0.2001
+  ],
+  [
+   "LF_J0_joint",
+   "RF_J0_joint",
+   -1,
+   0.7697
+  ],
+  [
+   "LF_J1_joint",
+   "RF_J1_joint",
+   1,
+   0.114
+  ],
+  [
+   "LF_J2_joint",
+   "RF_J2_joint",
+   -1,
+   1.0467
+  ],
+  [
+   "LF_J3_joint",
+   "RF_J3_joint",
+   -1,
+   0.3064
+  ]
+ ]
+}
