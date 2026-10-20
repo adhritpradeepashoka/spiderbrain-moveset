@@ -18,10 +18,14 @@ if [ ! -x $J/.venv/bin/python ]; then
   (cd $J && uv pip install --python .venv/bin/python -e . 2>&1 | tail -2)
 fi
 # sideload our extra scene(s) into Jumper's scene registry (idempotent)
-cp $SB/scenes_extra/courtship.py $J/scenes/courtship.py
+cp $SB/scenes_extra/courtship.py $SB/scenes_extra/ledge.py $J/scenes/
 grep -q 'id="courtship"' $J/scenes/__init__.py || cat >> $J/scenes/__init__.py <<'PY'
 
 register(id="courtship", description="football pitch + a second crab to court", tags=("presentation",), use="watching")
+PY
+grep -q 'id="ledge"' $J/scenes/__init__.py || cat >> $J/scenes/__init__.py <<'PY'
+
+register(id="ledge", description="football pitch + a 4 cm ledge with prey on it", tags=("presentation",), use="watching")
 PY
 echo SETUP_DONE
 [ "${SETUP_ONLY:-0}" = 1 ] && exit 0

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from .agent import Personality, SurvivalAgent
 
-SCENARIOS = ("hunt", "threat", "tun", "court", "ice")
+SCENARIOS = ("hunt", "threat", "tun", "court", "ice", "ledge")
 BALL_RADIUS = 0.11            # football scene ball, used for the looming (angular size) computation
 PARK = (-3.0, -3.0)           # where the ball waits when it has no role
 
@@ -33,10 +33,10 @@ def make_agent(name: str, seed: int = 0) -> SurvivalAgent:
         p.boldness = 0.5
     if name == "tun":
         p.patience = 0.4
-    if name == "hunt":
+    if name in ("hunt", "ledge"):
         p.boldness, p.appetite = 0.7, 0.8
     ag = SurvivalAgent(p)
-    if name == "hunt":
+    if name in ("hunt", "ledge"):
         ag.energy = 0.45
     elif name == "court":
         ag.mate_urge, ag.energy = 0.9, 0.9
@@ -84,6 +84,8 @@ class World:
                 k = min(0.9 * dt, d - 0.38) / d
                 self._thr = (tx + (rx - tx) * k, ty + (ry - ty) * k)
             return WorldOut(self._thr, "threat")
+        if n == "ledge":                        # the prey sits on the ledge, 0.42 m ahead; it does not move
+            return WorldOut((0.42, 0.0), "prey")
         if n == "court":
             return WorldOut((1.0, 0.3), "mate", mate_receptive=True)
         if n == "tun":

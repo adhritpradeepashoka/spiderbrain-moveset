@@ -27,6 +27,8 @@ INFO = {
             "A scripted dry spell raises stress. The crab crouches and drops its metabolism, then revives when it passes. A simple stand-in model."),
     "court": ("COURTSHIP", "gesture display",
               "The ball is a stand-in for a mate. The display uses Jumper's built-in gestures; acceptance is scripted."),
+    "ledge": ("LEDGE JUMP", "pounce up onto a 4 cm ledge",
+              "The ball (stand-in prey) sits on a raised slab 4 cm high. The crab stalks, freezes, then uses the forward-biased jump to leap up onto the ledge."),
     "court2": ("COURTSHIP", "display to a second crab",
                "The partner is a second Jumper crab model, posed (not driven): it faces the suitor and sways. Acceptance is scripted."),
     "soft": ("FLOOR SENSE", "soft-ground adaptation",
@@ -113,7 +115,7 @@ def hud(frame, r, scenario, surface=''):
     ov = out.copy()
     cv2.rectangle(ov, (0, H - 40), (W, H), (0, 0, 0), -1)
     out = cv2.addWeighted(ov, 0.75, out, 0.25, 0)
-    act = {"hunt": "HUNTING", "threat": "ESCAPING A THREAT", "tun": "SHUTDOWN (tardigrade)", "court": "COURTSHIP", "court2": "COURTSHIP", "ice": "ADAPTING TO THE FLOOR", "soft": "ADAPTING TO THE FLOOR"}.get(scenario, scenario.upper())
+    act = {"hunt": "HUNTING", "threat": "ESCAPING A THREAT", "tun": "SHUTDOWN (tardigrade)", "court": "COURTSHIP", "court2": "COURTSHIP", "ledge": "LEDGE JUMP", "ice": "ADAPTING TO THE FLOOR", "soft": "ADAPTING TO THE FLOOR"}.get(scenario, scenario.upper())
     text(out, f"{act}   |   SURFACE: {surface or 'grass pitch (normal grip)'}", (16, H - 12), 0.7, (255, 255, 255), 2)
     for k, line in enumerate(wrap(cap, 118)[:2]):
         text(out, line, (16, H - 53 + 11 * k), 0.45, (210, 210, 210), 1, shadow=False)

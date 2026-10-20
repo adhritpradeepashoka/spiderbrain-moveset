@@ -58,6 +58,7 @@ def main():
     ap.add_argument("--jumper", required=True, type=Path, help="path to a KingKongRobotics/jumper checkout")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--profile", default="tiny")
+    ap.add_argument("--step-entity", default=None, help="scene entity that is a low ledge slab (scene 'ledge': 'step'); the prey then sits on top of it")
     ap.add_argument("--mate-entity", default=None, help="scene entity that is a second crab to court (scene 'courtship': 'mate')")
     ap.add_argument("--prey-entity", default=None, help="scene entity to use as prey (football scene: 'ball')")
     ap.add_argument("--prey-start", type=float, nargs=2, default=(1.2, 0.5), help="prey start, metres from the robot's start")
@@ -67,7 +68,7 @@ def main():
                     help="stock: press A, Jumper's own vertical jump. directional: our forward-biased jump drives the joints")
     ap.add_argument("--jump-params", type=Path, default=None, help="JSON bias (e.g. configs/directional_jump_v3.json); default for --jump-style directional = configs/directional_jump_v4c.json")
     ap.add_argument("--jump-scale", type=float, default=1.0, help="0 = the stock jump's commands replayed open-loop, 1 = full forward bias")
-    ap.add_argument("--instinct", choices=["hunt", "threat", "tun", "court", "ice"], default=None,
+    ap.add_argument("--instinct", choices=["hunt", "threat", "tun", "court", "ice", "ledge"], default=None,
                     help="run the survival-crab agent in this scripted scenario (hunt/threat/tun/court need the football scene's ball)")
     ap.add_argument("--instinct-log", default="instinct_log.csv", help="per-tick CSV of the agent's state and drives (for the HUD overlay)")
     ap.add_argument("--log", default="brain_log.csv", help="per-tick CSV of what the brain saw and commanded")
@@ -198,12 +199,20 @@ def main():
             jp = m.data.default_joint_pos.clone()
             m.write_joint_state_to_sim(jp, torch.zeros_like(jp))
 
+        def _place_step(self, u, x, y, yaw):
+            """Hold the ledge slab still at world (x, y), aligned with the robot's initial heading."""
+            import torch
+            m = u.scene[a.step_entity]
+            dev = m.data.root_link_pos_w.device
+            st = torch.tensor([[x, y, 0.02, math.cos(yaw / 2), 0, 0, math.sin(yaw / 2), 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
+            m.write_root_state_to_sim(st)
+
         def _place_prey(self, u, x, y):
             """x, y are WORLD coordinates."""
             import torch
             ball = u.scene[a.prey_entity]
             dev = ball.data.root_link_pos_w.device
-            z = float(ball.data.root_link_pos_w[0][2]) if self._t else 0.055
+            z = (0.04 + 0.055) if a.step_entity else (float(ball.data.root_link_pos_w[0][2]) if self._t else 0.055)
             st = torch.tensor([[x, y, z, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
             ball.write_root_state_to_sim(st)
 
@@ -231,6 +240,8 @@ def main():
             landed = getattr(self, "_landed_pending", False)
             w = self._world.step(s, dt, pose, caught=self._caught)
             self._caught = False
+            if a.step_entity:
+                self._place_step(u, self._x0 + 0.63 * c0, self._y0 + 0.63 * s0, self._yaw0)
             if a.prey_entity and not a.no_puppet:
                 wx_ = self._x0 + w.ball[0] * c0 - w.ball[1] * s0
                 wy_ = self._y0 + w.ball[0] * s0 + w.ball[1] * c0
