@@ -81,7 +81,7 @@ def bar(img, x, y, w, label, v, col, mark=None):
     text(img, label, (x + w + 8, y + 13), 0.45, th=1)
 
 
-def hud(frame, r, scenario):
+def hud(frame, r, scenario, surface=''):
     out = cv2.resize(frame, (W, H), interpolation=cv2.INTER_CUBIC)
     state = r["state"]
     if state == "tun":
@@ -104,8 +104,14 @@ def hud(frame, r, scenario):
     bar(out, 16, H - 64, 200, "mate urge", f("mate"), (200, 120, 255))
     bar(out, 330, H - 108, 200, "viability" + (" (| = no shutdown)" if scenario == "tun" else ""), f("viability"), (240, 160, 60), mark=f("shadow") if scenario == "tun" else None)
     bar(out, 330, H - 86, 200, "grip (slip sense)", f("grip"), (200, 200, 90))
-    for k, line in enumerate(wrap(cap, 118)[:2]):
-        text(out, line, (16, H - 34 + 18 * k), 0.45, (210, 210, 210), 1, shadow=False)
+    # bottom label: what the crab is doing, and what it is standing on
+    ov = out.copy()
+    cv2.rectangle(ov, (0, H - 40), (W, H), (0, 0, 0), -1)
+    out = cv2.addWeighted(ov, 0.75, out, 0.25, 0)
+    act = {"hunt": "HUNTING", "threat": "ESCAPING A THREAT", "tun": "SHUTDOWN (tardigrade)", "court": "COURTSHIP", "ice": "ADAPTING TO THE FLOOR"}.get(scenario, scenario.upper())
+    text(out, f"{act}   |   SURFACE: {surface or 'grass pitch (normal grip)'}", (16, H - 12), 0.7, (255, 255, 255), 2)
+    for k, line in enumerate(wrap(cap, 118)[:1]):
+        text(out, line, (16, H - 50 + 0 * k), 0.45, (210, 210, 210), 1, shadow=False)
     return out
 
 
@@ -136,6 +142,7 @@ def main():
         vid, cs, scen = p[0], p[1], p[2]
         t0 = float(p[3]) if len(p) > 3 else 0.0
         t1 = float(p[4]) if len(p) > 4 else 1e9
+        surf = p[5] if len(p) > 5 else ''
         rows = read_csv(cs)
         cap = cv2.VideoCapture(vid)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -153,7 +160,7 @@ def main():
                 continue
             if t > t1:
                 break
-            vw.write(hud(fr, at(rows, t), scen))
+            vw.write(hud(fr, at(rows, t), scen, surf))
         cap.release()
     if not a.no_cards:
         card([("Bio-inspired behaviour logic", 0.9, (255, 255, 255)), ("not real connectomes. Only one robot exists:", 0.7, (200, 200, 200)),

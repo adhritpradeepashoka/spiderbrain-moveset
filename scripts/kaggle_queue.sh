@@ -6,12 +6,17 @@ set -u
 W=/kaggle/working; J=$W/jumper; SB=$W/spiderbrain-moveset; export MUJOCO_GL=egl
 run() {  # run SBDIR TAG SCENE STEPS STYLE JPARAMS INSTINCT
   local D=$1 TAG=$2 SCENE=$3 STEPS=$4 STYLE=$5 JP=$6 INST=$7
-  (cd $D && $J/.venv/bin/python scripts/play_with_brain.py --jumper $J --seed 0 $([ "$SCENE" = football ] && echo --prey-entity ball) \
+  (cd $D && $J/.venv/bin/python scripts/play_with_brain.py --jumper $J --seed 0 $([ "$SCENE" = football ] || [ "$SCENE" = courtship ] && echo --prey-entity ball) $([ "$SCENE" = courtship ] && echo --mate-entity mate) \
     --jump-style $STYLE --jump-scale 1.0 ${JP:+--jump-params $JP} ${INST:+--instinct $INST --instinct-log $W/inst_$TAG.csv} \
     --log $W/dj_$TAG.csv -- --app out/bundle_example/jumper.app --scene $SCENE --headless --steps $STEPS --video $W/dj_$TAG.mp4) > $W/dj_$TAG.log 2>&1
   echo "QDONE $TAG rc=$? $(date +%T)"
 }
-if [ "${1:-A}" = A ]; then
+if [ "${1:-A}" = C ]; then
+  # genuinely different floors for the floor-adaptation scenario, and a real second crab for courtship
+  run $SB court2 courtship 4000 directional "" court
+  run $SB soft   soft      4000 directional "" ice
+  run $SB rough  rough     4000 directional "" ice
+elif [ "${1:-A}" = A ]; then
   run $SB hunt3  football 5000 directional "" hunt     # catch-fix check
   run $SB threat football 3200 directional "" threat
   run $SB tun    football 3400 directional "" tun

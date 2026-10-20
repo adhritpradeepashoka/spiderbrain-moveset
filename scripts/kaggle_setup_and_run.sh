@@ -17,6 +17,12 @@ if [ ! -x $J/.venv/bin/python ]; then
   uv pip install --python $J/.venv/bin/python torch==2.9.1 torchvision==0.24.1 --index-url https://download.pytorch.org/whl/$CUDA 2>&1 | tail -2
   (cd $J && uv pip install --python .venv/bin/python -e . 2>&1 | tail -2)
 fi
+# sideload our extra scene(s) into Jumper's scene registry (idempotent)
+cp $SB/scenes_extra/courtship.py $J/scenes/courtship.py
+grep -q 'id="courtship"' $J/scenes/__init__.py || cat >> $J/scenes/__init__.py <<'PY'
+
+register(id="courtship", description="football pitch + a second crab to court", tags=("presentation",), use="watching")
+PY
 echo SETUP_DONE
 [ "${SETUP_ONLY:-0}" = 1 ] && exit 0
 export MUJOCO_GL=egl

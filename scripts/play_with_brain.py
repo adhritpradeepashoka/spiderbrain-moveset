@@ -58,6 +58,7 @@ def main():
     ap.add_argument("--jumper", required=True, type=Path, help="path to a KingKongRobotics/jumper checkout")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--profile", default="tiny")
+    ap.add_argument("--mate-entity", default=None, help="scene entity that is a second crab to court (scene 'courtship': 'mate')")
     ap.add_argument("--prey-entity", default=None, help="scene entity to use as prey (football scene: 'ball')")
     ap.add_argument("--prey-start", type=float, nargs=2, default=(1.2, 0.5), help="prey start, metres from the robot's start")
     ap.add_argument("--no-puppet", action="store_true", help="do not move the prey entity; just read its position")
@@ -184,6 +185,19 @@ def main():
             except Exception:
                 return [0.0, 0.0]
 
+        def _place_mate(self, u, x, y, s):
+            """Pose the second crab at world (x, y), facing the suitor, swaying a little (courtship display)."""
+            import torch
+            m = u.scene[a.mate_entity]
+            dev = m.data.root_link_pos_w.device
+            rx, ry = [float(v) for v in u.scene["robot"].data.root_link_pos_w[0][:2]]
+            h = math.atan2(ry - y, rx - x) + 0.35 * math.sin(2 * math.pi * 0.4 * s)
+            z = 0.10647 + 0.004 * math.sin(2 * math.pi * 1.2 * s)
+            st = torch.tensor([[x, y, z, math.cos(h / 2), 0, 0, math.sin(h / 2), 0, 0, 0, 0, 0, 0]], dtype=torch.float32, device=dev)
+            m.write_root_state_to_sim(st)
+            jp = m.data.default_joint_pos.clone()
+            m.write_joint_state_to_sim(jp, torch.zeros_like(jp))
+
         def _place_prey(self, u, x, y):
             """x, y are WORLD coordinates."""
             import torch
@@ -218,7 +232,13 @@ def main():
             w = self._world.step(s, dt, pose, caught=self._caught)
             self._caught = False
             if a.prey_entity and not a.no_puppet:
-                self._place_prey(u, self._x0 + w.ball[0] * c0 - w.ball[1] * s0, self._y0 + w.ball[0] * s0 + w.ball[1] * c0)
+                wx_ = self._x0 + w.ball[0] * c0 - w.ball[1] * s0
+                wy_ = self._y0 + w.ball[0] * s0 + w.ball[1] * c0
+                if a.mate_entity and w.role == "mate":
+                    self._place_prey(u, self._x0 + 7.0, self._y0 + 5.0)          # the ball is not needed: park it far away
+                    self._place_mate(u, wx_, wy_, s)
+                else:
+                    self._place_prey(u, wx_, wy_)
             dist, bearing = bearing_to(pose, w.ball)
             lim = math.radians(85 if getattr(self, "_vis", False) else 65)          # hysteresis: no flicker at the edge of the view
             visible = w.role != "none" and abs(bearing) < lim and dist < 3.0
