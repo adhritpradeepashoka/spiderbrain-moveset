@@ -27,6 +27,10 @@ INFO = {
             "A scripted dry spell raises stress. The crab crouches and drops its metabolism, then revives when it passes. A simple stand-in model."),
     "court": ("COURTSHIP", "gesture display",
               "The ball is a stand-in for a mate. The display uses Jumper's built-in gestures; acceptance is scripted."),
+    "court2": ("COURTSHIP", "display to a second crab",
+               "The partner is a second Jumper crab model, posed (not driven): it faces the suitor and sways. Acceptance is scripted."),
+    "soft": ("FLOOR SENSE", "soft-ground adaptation",
+             "Softer, sinking ground gives a middling grip reading, so the crab is cautious but still moves. Compare ice (very low) and grass (full)."),
     "ice": ("FLOOR SENSE", "slippery-floor adaptation",
             "The crab estimates grip from how far it really moves. On ice it crouches and slows, and does not pounce."),
 }
@@ -55,8 +59,9 @@ def at(rows, t):
 
 
 def text(img, s, org, scale=0.7, col=(255, 255, 255), th=2, shadow=True):
-    if shadow:
-        cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), th + 3, cv2.LINE_AA)
+    if shadow:      # same thickness as the text (a thicker shadow gets different glyph spacing and smears), offset instead
+        for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1), (2, 2)):
+            cv2.putText(img, s, (org[0] + dx, org[1] + dy), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), th, cv2.LINE_AA)
     cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, col, th, cv2.LINE_AA)
 
 
@@ -90,28 +95,28 @@ def hud(frame, r, scenario, surface=''):
     col = STATE_COL.get(state, (255, 255, 255))
     ov = out.copy()
     cv2.rectangle(ov, (0, 0), (W, 78), (0, 0, 0), -1)
-    cv2.rectangle(ov, (0, H - 150), (W, H), (0, 0, 0), -1)
+    cv2.rectangle(ov, (0, H - 162), (W, H), (0, 0, 0), -1)
     out = cv2.addWeighted(ov, 0.55, out, 0.45, 0)
     text(out, state.upper().replace("_", " "), (16, 38), 1.0, col, 2)
     text(out, r["why"][:70], (16, 66), 0.55, (230, 230, 230), 1)
     if state == "tun":
         text(out, "metabolism 2%", (W - 230, 38), 0.8, (255, 190, 120), 2)
     title, bio, cap = INFO[scenario]
-    text(out, f"{title}: {bio}", (16, H - 128), 0.6, (255, 255, 255), 1)
+    text(out, f"{title}: {bio}", (16, H - 144), 0.6, (255, 255, 255), 1)
     f = lambda k: float(r[k]) if r.get(k) not in (None, "") else 0.0
-    bar(out, 16, H - 108, 200, "energy", f("energy"), (90, 200, 90))
-    bar(out, 16, H - 86, 200, "fear", f("fear"), (60, 60, 240))
-    bar(out, 16, H - 64, 200, "mate urge", f("mate"), (200, 120, 255))
-    bar(out, 330, H - 108, 200, "viability" + (" (| = no shutdown)" if scenario == "tun" else ""), f("viability"), (240, 160, 60), mark=f("shadow") if scenario == "tun" else None)
-    bar(out, 330, H - 86, 200, "grip (slip sense)", f("grip"), (200, 200, 90))
+    bar(out, 16, H - 124, 200, "energy", f("energy"), (90, 200, 90))
+    bar(out, 16, H - 104, 200, "fear", f("fear"), (60, 60, 240))
+    bar(out, 16, H - 84, 200, "mate urge", f("mate"), (200, 120, 255))
+    bar(out, 330, H - 124, 200, "viability" + (" (| = no shutdown)" if scenario == "tun" else ""), f("viability"), (240, 160, 60), mark=f("shadow") if scenario == "tun" else None)
+    bar(out, 330, H - 104, 200, "grip (slip sense)", f("grip"), (200, 200, 90))
     # bottom label: what the crab is doing, and what it is standing on
     ov = out.copy()
     cv2.rectangle(ov, (0, H - 40), (W, H), (0, 0, 0), -1)
     out = cv2.addWeighted(ov, 0.75, out, 0.25, 0)
-    act = {"hunt": "HUNTING", "threat": "ESCAPING A THREAT", "tun": "SHUTDOWN (tardigrade)", "court": "COURTSHIP", "ice": "ADAPTING TO THE FLOOR"}.get(scenario, scenario.upper())
+    act = {"hunt": "HUNTING", "threat": "ESCAPING A THREAT", "tun": "SHUTDOWN (tardigrade)", "court": "COURTSHIP", "court2": "COURTSHIP", "ice": "ADAPTING TO THE FLOOR", "soft": "ADAPTING TO THE FLOOR"}.get(scenario, scenario.upper())
     text(out, f"{act}   |   SURFACE: {surface or 'grass pitch (normal grip)'}", (16, H - 12), 0.7, (255, 255, 255), 2)
-    for k, line in enumerate(wrap(cap, 118)[:1]):
-        text(out, line, (16, H - 50 + 0 * k), 0.45, (210, 210, 210), 1, shadow=False)
+    for k, line in enumerate(wrap(cap, 118)[:2]):
+        text(out, line, (16, H - 53 + 11 * k), 0.45, (210, 210, 210), 1, shadow=False)
     return out
 
 
@@ -147,7 +152,7 @@ def main():
         cap = cv2.VideoCapture(vid)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         if not a.no_cards:
-            card([(INFO[scen][0], 1.5, STATE_COL.get({"hunt": "hunt", "threat": "flee", "tun": "tun", "court": "court"}.get(scen, "wander"), (255, 255, 255))),
+            card([(INFO[scen][0], 1.5, STATE_COL.get({"hunt": "hunt", "threat": "flee", "tun": "tun", "court": "court", "court2": "court"}.get(scen, "wander"), (255, 255, 255))),
                   (INFO[scen][1], 0.9, (220, 220, 220))], 1.6, a.fps, vw)
         i = 0
         while True:
@@ -163,8 +168,8 @@ def main():
             vw.write(hud(fr, at(rows, t), scen, surf))
         cap.release()
     if not a.no_cards:
-        card([("Bio-inspired behaviour logic", 0.9, (255, 255, 255)), ("not real connectomes. Only one robot exists:", 0.7, (200, 200, 200)),
-              ("prey, threat and mate are stand-in objects.", 0.7, (200, 200, 200)), ("Open source: spiderbrain-moveset on GitHub", 0.7, (180, 220, 255)),
+        card([("Bio-inspired behaviour logic", 0.9, (255, 255, 255)), ("not real connectomes. Only one crab is controlled:", 0.7, (200, 200, 200)),
+              ("prey and threat are stand-in objects; the mate crab is posed.", 0.7, (200, 200, 200)), ("Open source: spiderbrain-moveset on GitHub", 0.7, (180, 220, 255)),
               ("Jumper by KingKong Robotics", 0.7, (200, 200, 200))], 4.0, a.fps, vw)
     vw.release()
     r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-movflags", "+faststart", a.out],
