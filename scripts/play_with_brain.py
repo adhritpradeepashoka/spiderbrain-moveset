@@ -144,6 +144,35 @@ def main():
                 self._drive_directional_jump()
             return out
 
+        def _probe_torque(self, data, now_s):
+            """Record the largest joint torque each tick of a jump (diagnostic: how hard are the motors pushed?)."""
+            tq = None
+            for nm in ("applied_torque", "joint_effort", "actuator_force", "computed_torque"):
+                v = getattr(data, nm, None)
+                if v is not None:
+                    tq = v
+                    self._tq_name = nm
+                    break
+            if tq is None:
+                return
+            t = tq[0].abs() if hasattr(tq[0], "abs") else abs(tq[0])
+            self._tq = getattr(self, "_tq", []) + [(now_s, float(t.max()), int((t > 1.2).sum()))]
+
+        def _report_torque(self):
+            rows = getattr(self, "_tq", [])
+            if not rows:
+                print("[spiderbrain] torque probe: no torque attribute found on robot data", flush=True)
+                return
+            dt = rows[1][0] - rows[0][0] if len(rows) > 1 else 0.005
+            over = [r for r in rows if r[2] > 0]
+            longest, cur = 0, 0
+            for r in rows:
+                cur = cur + 1 if r[2] > 0 else 0
+                longest = max(longest, cur)
+            print(f"[spiderbrain] torque probe ({self._tq_name}): peak {max(r[1] for r in rows):.3f} N*m, ticks with a motor above 1.2 N*m {len(over)} "
+                  f"({len(over) * dt:.2f} s total, longest run {longest * dt:.2f} s), most motors above 1.2 at once {max(r[2] for r in rows)}", flush=True)
+            self._tq = []
+
         def _drive_directional_jump(self):
             """After Jumper's controller has written its targets, overwrite them while our jump plays."""
             import torch
@@ -158,6 +187,7 @@ def main():
                 self._dj_start = [float(v) for v in data.root_link_pos_w[0][:3]] + [yaw_from_quat_wxyz(data.root_link_quat_w[0])]
                 print(f"\n[spiderbrain] t={now_s:.2f}s DIRECTIONAL JUMP start at ({self._dj_start[0]:.2f},{self._dj_start[1]:.2f})", flush=True)
             if self._dj_start is not None:
+                self._probe_torque(data, now_s)
                 self._dj_zmax = max(getattr(self, "_dj_zmax", 0.0) if self._dj.active else 0.0, float(data.root_link_pos_w[0][2]))
             tgt = self._dj.target(now_s)
             if tgt is None:
@@ -167,6 +197,7 @@ def main():
                     fwd = ddx * math.cos(self._dj_start[3]) + ddy * math.sin(self._dj_start[3])
                     side = -ddx * math.sin(self._dj_start[3]) + ddy * math.cos(self._dj_start[3])
                     print(f"\n[spiderbrain] directional jump done: forward {fwd:+.3f} m, sideways {side:+.3f} m, z {p[2]:.3f}, peak z {getattr(self, '_dj_zmax', 0.0):.3f} (start z {self._dj_start[2]:.3f})", flush=True)
+                    self._report_torque()
                     self.jump_results = getattr(self, "jump_results", []) + [(round(now_s, 2), round(fwd, 3), round(side, 3))]
                     self._dj_start = None
                 return

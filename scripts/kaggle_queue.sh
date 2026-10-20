@@ -7,7 +7,7 @@ W=/kaggle/working; J=$W/jumper; SB=$W/spiderbrain-moveset; export MUJOCO_GL=egl
 run() {  # run SBDIR TAG SCENE STEPS STYLE JPARAMS INSTINCT
   local D=$1 TAG=$2 SCENE=$3 STEPS=$4 STYLE=$5 JP=$6 INST=$7
   (cd $D && $J/.venv/bin/python scripts/play_with_brain.py --jumper $J --seed 0 $([ "$SCENE" = football ] || [ "$SCENE" = courtship ] || [ "$SCENE" = ledge ] && echo --prey-entity ball) $([ "$SCENE" = courtship ] && echo --mate-entity mate) $([ "$SCENE" = ledge ] && echo --step-entity step) \
-    --jump-style $STYLE --jump-scale 1.0 ${JP:+--jump-params $JP} ${INST:+--instinct $INST --instinct-log $W/inst_$TAG.csv} \
+    --jump-style $STYLE --jump-scale ${JSC:-1.0} ${JP:+--jump-params $JP} ${INST:+--instinct $INST --instinct-log $W/inst_$TAG.csv} \
     --log $W/dj_$TAG.csv -- --app out/bundle_example/jumper.app --scene $SCENE --headless --steps $STEPS --video $W/dj_$TAG.mp4) > $W/dj_$TAG.log 2>&1
   echo "QDONE $TAG rc=$? $(date +%T)"
 }
@@ -16,6 +16,9 @@ if [ "${1:-A}" = C ]; then
   run $SB court2 courtship 4000 directional "" court
   run $SB soft   soft      4000 directional "" ice
   run $SB rough  rough     4000 directional "" ice
+elif [ "${1:-A}" = E ]; then
+  # "how hard can we push the jump": the forward-bias amplitude scaled up, with the torque probe printing motor load per jump
+  for k in 1 2 3 5; do JSC=$k.0 run $SB push$k football 2400 directional "" hunt; done
 elif [ "${1:-A}" = D ]; then
   run $SB ledge  ledge     3000 directional "" ledge
 elif [ "${1:-A}" = A ]; then
