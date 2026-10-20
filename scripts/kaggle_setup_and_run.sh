@@ -18,6 +18,7 @@ if [ ! -x $J/.venv/bin/python ]; then
   (cd $J && uv pip install --python .venv/bin/python -e . 2>&1 | tail -2)
 fi
 echo SETUP_DONE
+[ "${SETUP_ONLY:-0}" = 1 ] && exit 0
 export MUJOCO_GL=egl
 # knobs: INSTINCT (hunt|threat|tun|court|ice: survival-crab scenario; ice needs SCENE=ice), STEPS (200 Hz ticks), STYLE (directional|stock), JSCALE (0 = stock commands replayed open-loop), SCENE, TAG (output suffix)
 STEPS=${STEPS:-4000}; STYLE=${STYLE:-directional}; JSCALE=${JSCALE:-1.0}; SCENE=${SCENE:-football}; TAG=${TAG:-}; INSTINCT=${INSTINCT:-}
